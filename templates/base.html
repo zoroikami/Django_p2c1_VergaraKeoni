@@ -1,15 +1,85 @@
-<!-- templates/base.html -->
 <!doctype html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}EcoEnergy{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #172a2a;
+            --muted: #6b7f7c;
+            --paper: #f4f7f2;
+            --panel: #ffffff;
+            --line: #dce7df;
+            --green: #2f765b;
+            --green-dark: #215244;
+            --mint: #dceee2;
+            --amber: #c68139;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: var(--paper);
+            font-family: "DM Sans", sans-serif;
+        }
+
+        body::before {
+            position: fixed;
+            z-index: -1;
+            inset: 0;
+            background: radial-gradient(circle at 92% 4%, #dceee2 0, transparent 28%), linear-gradient(135deg, #f4f7f2 0%, #edf4ee 100%);
+            content: "";
+        }
+
+        h1, h2, h3 { font-family: "Space Grotesk", sans-serif; }
+        .site-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 26px 28px;
+        }
+        .brand {
+            color: var(--green-dark);
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: .02em;
+            text-decoration: none;
+        }
+        .brand-mark { color: var(--amber); }
+        .nav-links { display: flex; gap: 8px; }
+        .nav-links a {
+            border-radius: 8px;
+            color: var(--muted);
+            padding: 10px 14px;
+            font-size: .9rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .nav-links a:hover, .nav-links a:focus-visible { background: var(--mint); color: var(--green-dark); }
+        main { max-width: 1180px; margin: 0 auto; padding: 44px 28px 72px; }
+        @media (max-width: 640px) {
+            .site-header { padding: 20px; }
+            main { padding: 28px 20px 52px; }
+            .nav-links a { padding: 8px; }
+        }
+    </style>
 </head>
 <body>
-    <nav>
-        <a href="{% url 'dispositivos:inicio' %}">Inicio</a>
-        <a href="{% url 'dispositivos:catalogo' %}">Dispositivos</a>
-    </nav>
+    <header class="site-header">
+        <a class="brand" href="{% url 'dispositivos:inicio' %}"><span class="brand-mark">+</span> EcoEnergy</a>
+        <nav class="nav-links" aria-label="Navegacion principal">
+            <a href="{% url 'dispositivos:inicio' %}">Inicio</a>
+            <a href="{% url 'dispositivos:catalogo' %}">Dispositivos</a>
+        </nav>
+    </header>
     <main>{% block content %}{% endblock %}</main>
 </body>
 </html>

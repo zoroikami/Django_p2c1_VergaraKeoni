@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from .services import cargar_dispositivos
 
 def inicio(request):
     contexto = {
@@ -23,3 +24,19 @@ def catalogo(request):
         "dispositivos/catalogo.html",
         {"dispositivos": dispositivos},
     )
+
+def catalogo(request):
+    dispositivos = cargar_dispositivos()
+
+    activos = sum(
+        1 for item in dispositivos
+        if item["estado"] == "Activo"
+    )
+    contexto = {
+        "dispositivos": dispositivos,
+        "total": len(dispositivos),
+        "total_activos": activos,
+}
+    return render(
+        request, "dispositivos/catalogo.html", contexto
+)

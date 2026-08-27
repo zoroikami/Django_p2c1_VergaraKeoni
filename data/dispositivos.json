@@ -1,0 +1,15 @@
+[
+
+{
+"id": 1,
+"nombre": "Medidor inteligente",
+"estado": "Activo",
+"consumo_kwh": 18.4
+},
+{
+"id": 2,
+"nombre": "Climatizador",
+"estado": "Revisión",
+"consumo_kwh": 32.7
+}
+]
