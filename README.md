@@ -1,6 +1,76 @@
-# Django_p2c1_VergaraKeoni - Clase 4: Templates, Herencia y Contexto
+# EcoEnergy - Sistema de Monitoreo Energético Responsable
 
-Proyecto Django que implementa separación de responsabilidades usando vistas, contextos y plantillas HTML con herencia y navegación por nombres de URL.
+Proyecto Back End desarrollado con **Python** y **Django** para la asignatura **Programación Back End**.
+
+---
+
+## 🎯 Descripción y Objetivo
+
+**EcoEnergy** es una aplicación web orientada al monitoreo energético responsable y a la visualización de dispositivos de control. Su objetivo actual es implementar una arquitectura desacoplada mediante el uso de vistas (`views.py`), contextos de datos y plantillas HTML (`templates`) con herencia (`base.html`) y navegación basada en nombres de rutas.
+
+---
+
+## 📋 Requisitos Previos
+
+- **Python 3.12** o superior instalado en el sistema.
+- **Git** instalado.
+
+---
+
+## 🚀 Instalación y Puesta en Marcha
+
+### 1. Clonación del Repositorio
+
+```bash
+git clone https://github.com/zoroikami/Django_p2c1_VergaraKeoni.git
+cd Django_p2c1_VergaraKeoni
+```
+
+### 2. Creación y Activación del Entorno Virtual (`.venv`)
+
+- **Windows (PowerShell):**
+  ```powershell
+  python -m venv .venv
+  .venv\Scripts\Activate.ps1
+  ```
+
+- **Windows (CMD):**
+  ```cmd
+  python -m venv .venv
+  .venv\Scripts\activate.bat
+  ```
+
+- **Linux / macOS / Git Bash:**
+  ```bash
+  python3 -m venv .venv
+  source .venv/Scripts/activate   # o source .venv/bin/activate
+  ```
+
+### 3. Instalación de Dependencias
+
+Con el entorno virtual activado:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 🔍 Comandos de Verificación
+
+1. **Comprobar la configuración del proyecto:**
+   ```bash
+   python manage.py check
+   ```
+
+2. **Iniciar el servidor de desarrollo:**
+   ```bash
+   python manage.py runserver
+   ```
+
+3. **Verificar las rutas en el navegador:**
+   - **Inicio:** `http://127.0.0.1:8000/` (muestra datos del sistema mediante contexto).
+   - **Catálogo de Dispositivos:** `http://127.0.0.1:8000/dispositivos/` (muestra la lista de dispositivos registrados).
 
 ---
 
@@ -9,71 +79,36 @@ Proyecto Django que implementa separación de responsabilidades usando vistas, c
 ```text
 Django_p2c1_VergaraKeoni/
 ├── config/
-│   ├── settings.py
-│   ├── urls.py
-│   └── ...
+│   ├── settings.py       # Configuración global y registro de templates
+│   ├── urls.py           # Enrutador principal
+│   ├── wsgi.py
+│   └── asgi.py
 ├── dispositivos/
-│   ├── urls.py
-│   ├── views.py
-│   └── ...
+│   ├── apps.py
+│   ├── urls.py           # Rutas locales (app_name = "dispositivos")
+│   └── views.py          # Lógica de vistas y preparación de contextos
 ├── templates/
-│   ├── base.html
+│   ├── base.html         # Plantilla base con navegación y bloques compartidos
 │   └── dispositivos/
-│       ├── inicio.html
-│       └── catalogo.html
+│       ├── inicio.html   # Plantilla hija con contexto de bienvenida
+│       └── catalogo.html # Plantilla hija con iteración de colección de datos
+├── .gitignore
 ├── manage.py
+├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## 📄 Templates y Herencia
+## 📌 Estado Actual y Próximos Pasos
 
-- **Plantilla base**: `templates/base.html`
-  - Define la estructura HTML compartida (`<!doctype html>`, `<head>`, `<nav>`, `<main>`).
-  - Incluye bloques reutilizables `{% block title %}` y `{% block content %}`.
-  - Maneja la barra de navegación usando `{% url 'dispositivos:inicio' %}` y `{% url 'dispositivos:catalogo' %}`.
+- **Estado actual:**
+  - Configuración global de `TEMPLATES` y registro de la aplicación `dispositivos`.
+  - Plantilla base `base.html` con sistema de bloques (`{% block %}`) y enlaces dinámicos con `{% url %}`.
+  - Vistas `inicio` y `catalogo` operativas utilizando `render()` con inyección de contextos (`sistema`, `mensaje`, `asignatura` y lista `dispositivos`).
+  - Plantillas hijas con herencia `{% extends "base.html" %}` y manejo de colecciones con `{% for %}` y `{% empty %}`.
 
-- **Plantillas hijas**:
-  - `templates/dispositivos/inicio.html`: Hereda de `base.html` mediante `{% extends "base.html" %}` e inyecta la información del sistema.
-  - `templates/dispositivos/catalogo.html`: Hereda de `base.html` y recorre la colección de dispositivos con `{% for %}` y `{% empty %}`.
-
----
-
-## 🌐 Rutas Funcionales
-
-| Ruta | Nombre de URL (`name`) | Vista | Descripción |
-|---|---|---|---|
-| `/` | `dispositivos:inicio` | `dispositivos.views.inicio` | Página de bienvenida con datos del sistema. |
-| `/dispositivos/` | `dispositivos:catalogo` | `dispositivos.views.catalogo` | Catálogo con listado de dispositivos registrados. |
-
----
-
-## 🔑 Claves de Contexto
-
-### 1. Vista `inicio` (`/`)
-- `sistema`: Nombre del sistema (`"EcoEnergy"`).
-- `mensaje`: Descripción del servicio (`"Monitoreo energético responsable"`).
-- `asignatura`: Nombre del curso (`"Programación Back End"`).
-
-### 2. Vista `catalogo` (`/dispositivos/`)
-- `dispositivos`: Lista de diccionarios con los dispositivos (cada uno con `nombre` y `estado`).
-
----
-
-## 🚀 Ejecución y Pruebas
-
-### 1. Verificar configuración del proyecto
-```bash
-python manage.py check
-```
-
-### 2. Iniciar el servidor de desarrollo
-```bash
-python manage.py runserver
-```
-
-### 3. Prueba de navegación
-- Ingresar a `http://127.0.0.1:8000/` para ver la página de inicio.
-- Hacer clic en el enlace **Dispositivos** del menú de navegación para acceder a `http://127.0.0.1:8000/dispositivos/`.
-- Hacer clic en el enlace **Inicio** para volver a la página inicial.
+- **Próximos pasos (Clase 5):**
+  - Manejo de estructuras de datos en Python.
+  - Integración y lectura de archivos JSON.
+  - Representación de datos estructurados dinámicos en los templates.
