@@ -108,7 +108,5 @@ Django_p2c1_VergaraKeoni/
   - Vistas `inicio` y `catalogo` operativas utilizando `render()` con inyección de contextos (`sistema`, `mensaje`, `asignatura` y lista `dispositivos`).
   - Plantillas hijas con herencia `{% extends "base.html" %}` y manejo de colecciones con `{% for %}` y `{% empty %}`.
 
-- **Próximos pasos (Clase 5):**
-  - Manejo de estructuras de datos en Python.
-  - Integración y lectura de archivos JSON.
-  - Representación de datos estructurados dinámicos en los templates.
+- dfsalfksdlkfjsd
+
