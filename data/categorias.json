@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "nombre": "Iluminación",
+    "descripcion": "Dispositivos de iluminación y control de energía"
+  },
+  {
+    "id": 2,
+    "nombre": "Climatización",
+    "descripcion": "Equipos de aire acondicionado y ventilación"
+  },
+  {
+    "id": 3,
+    "nombre": "Monitoreo",
+    "descripcion": "Sensores y medidores inteligentes"
+  }
+]

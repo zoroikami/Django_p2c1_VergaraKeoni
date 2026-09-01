@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <style>
         :root {
             --ink: #172a2a;
@@ -18,9 +19,10 @@
             --green-dark: #215244;
             --mint: #dceee2;
             --amber: #c68139;
+            --danger: #dc3545;
+            --soft-red: #f9e7e7;
         }
 
-        * { box-sizing: border-box; }
         body {
             margin: 0;
             color: var(--ink);
@@ -30,56 +32,83 @@
 
         body::before {
             position: fixed;
-            z-index: -1;
             inset: 0;
             background: radial-gradient(circle at 92% 4%, #dceee2 0, transparent 28%), linear-gradient(135deg, #f4f7f2 0%, #edf4ee 100%);
             content: "";
+            z-index: -1;
         }
 
-        h1, h2, h3 { font-family: "Space Grotesk", sans-serif; }
+        h1, h2, h3, .brand { font-family: "Space Grotesk", sans-serif; }
         .site-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
             max-width: 1180px;
             margin: 0 auto;
-            padding: 26px 28px;
+            padding: 26px 28px 18px;
         }
         .brand {
             color: var(--green-dark);
-            font-family: "Space Grotesk", sans-serif;
-            font-size: 1.25rem;
+            font-size: 1.35rem;
             font-weight: 700;
             letter-spacing: .02em;
             text-decoration: none;
         }
         .brand-mark { color: var(--amber); }
-        .nav-links { display: flex; gap: 8px; }
         .nav-links a {
-            border-radius: 8px;
             color: var(--muted);
-            padding: 10px 14px;
-            font-size: .9rem;
             font-weight: 600;
             text-decoration: none;
+            padding: 0.65rem 0.9rem;
+            border-radius: 8px;
         }
-        .nav-links a:hover, .nav-links a:focus-visible { background: var(--mint); color: var(--green-dark); }
-        main { max-width: 1180px; margin: 0 auto; padding: 44px 28px 72px; }
+        .nav-links a:hover, .nav-links a:focus-visible {
+            background: var(--mint);
+            color: var(--green-dark);
+        }
+        .main-shell {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 28px 72px;
+        }
+        .panel-card {
+            border: 1px solid var(--line);
+            background: var(--panel);
+            box-shadow: 0 14px 34px rgba(41, 76, 59, 0.08);
+        }
+        .status-pill {
+            display: inline-block;
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+        .status-normal {
+            background: #e2f3e7;
+            color: #267044;
+        }
+        .status-alert {
+            background: #fff0dc;
+            color: #9a5d1d;
+        }
+        .info-box {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+        }
         @media (max-width: 640px) {
-            .site-header { padding: 20px; }
-            main { padding: 28px 20px 52px; }
-            .nav-links a { padding: 8px; }
+            .site-header, .main-shell { padding-left: 20px; padding-right: 20px; }
         }
     </style>
 </head>
 <body>
-    <header class="site-header">
+    <header class="site-header d-flex justify-content-between align-items-center">
         <a class="brand" href="{% url 'dispositivos:inicio' %}"><span class="brand-mark">+</span> EcoEnergy</a>
-        <nav class="nav-links" aria-label="Navegacion principal">
+        <nav class="nav-links d-flex gap-2" aria-label="Navegación principal">
             <a href="{% url 'dispositivos:inicio' %}">Inicio</a>
             <a href="{% url 'dispositivos:catalogo' %}">Dispositivos</a>
+            <a href="{% url 'dispositivos:zonas' %}">Zonas</a>
         </nav>
     </header>
-    <main>{% block content %}{% endblock %}</main>
+    <main class="main-shell">{% block content %}{% endblock %}</main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>

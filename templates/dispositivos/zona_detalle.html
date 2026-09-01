@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle zona | EcoEnergy{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb mb-0" style="font-size: 0.95rem; color: #3a4a4a;">
+            <li class="breadcrumb-item"><a href="{% url 'dispositivos:inicio' %}" class="text-decoration-none text-dark">EcoEnergy</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'dispositivos:zonas' %}" class="text-decoration-none text-dark">Zonas</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ zona.nombre }}</li>
+        </ol>
+    </nav>
+
+    <h1 class="fw-bold text-uppercase mb-4" style="font-size: clamp(2rem, 2vw, 2.5rem); letter-spacing: -0.04em; color: #1d2a2a;">Detalle de zona</h1>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-3">
+            <div class="card border-0 h-100" style="background: #f3f5f4; border: 1px solid #dfe6e3; border-radius: 10px;">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase">Límite</div>
+                    <div class="mt-2 fw-bold" style="font-size: 2rem; color: #1d2a2a;">{{ zona.limite_kwh }} kWh</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card border-0 h-100" style="background: #f3f5f4; border: 1px solid #dfe6e3; border-radius: 10px;">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase">Consumo total</div>
+                    <div class="mt-2 fw-bold" style="font-size: 2rem; color: #1d2a2a;">{{ consumo_total }} kWh</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card border-0 h-100" style="background: #f3f5f4; border: 1px solid #dfe6e3; border-radius: 10px;">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase">Dispositivos</div>
+                    <div class="mt-2 fw-bold" style="font-size: 2rem; color: #1d2a2a;">{{ cantidad_dispositivos }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card border-0 h-100" style="background: #f3f5f4; border: 1px solid #dfe6e3; border-radius: 10px;">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase">Estado</div>
+                    <div class="mt-2">
+                        <span class="badge rounded-pill px-3 py-2 {% if estado == 'ALERTA' %}text-bg-warning{% else %}" style="background: #dfeee4; color: #2c6d4d; font-weight: 600;">{% endif %}{{ estado }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if dispositivos %}
+    <div class="table-responsive border rounded-3 overflow-hidden">
+        <table class="table table-borderless align-middle mb-0">
+            <thead style="background: #1f2a2a; color: #fff;">
+                <tr>
+                    <th class="px-3 py-3 fw-bold">Dispositivo</th>
+                    <th class="px-3 py-3 fw-bold">Categoría</th>
+                    <th class="px-3 py-3 fw-bold text-end">Consumo kWh</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dispositivo in dispositivos %}
+                <tr style="border-top: 1px solid #e6ece9; background: #f8faf9;">
+                    <td class="px-3 py-3 fw-semibold" style="color: #1d2a2a;">{{ dispositivo.nombre }}</td>
+                    <td class="px-3 py-3" style="color: #2d3c3c;">{{ dispositivo.categoria }}</td>
+                    <td class="px-3 py-3 text-end fw-semibold" style="color: #1d2a2a;">{{ dispositivo.consumo_kwh }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-secondary mb-0">Esta zona no tiene dispositivos.</div>
+    {% endif %}
+</div>
+{% endblock %}

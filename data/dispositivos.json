@@ -1,15 +1,66 @@
 [
-
-{
-"id": 1,
-"nombre": "Medidor inteligente",
-"estado": "Activo",
-"consumo_kwh": 18.4
-},
-{
-"id": 2,
-"nombre": "Climatizador",
-"estado": "Revisión",
-"consumo_kwh": 32.7
-}
+  {
+    "id": 1,
+    "nombre": "Medidor inteligente",
+    "estado": "Activo",
+    "consumo_kwh": 18.4,
+    "zona_id": 1,
+    "categoria_id": 3
+  },
+  {
+    "id": 2,
+    "nombre": "Luminaria inteligente",
+    "estado": "Activo",
+    "consumo_kwh": 12.1,
+    "zona_id": 1,
+    "categoria_id": 1
+  },
+  {
+    "id": 3,
+    "nombre": "Climatizador",
+    "estado": "Revisión",
+    "consumo_kwh": 32.7,
+    "zona_id": 2,
+    "categoria_id": 2
+  },
+  {
+    "id": 4,
+    "nombre": "Sensor de temperatura",
+    "estado": "Activo",
+    "consumo_kwh": 8.9,
+    "zona_id": 2,
+    "categoria_id": 3
+  },
+  {
+    "id": 5,
+    "nombre": "Panel LED",
+    "estado": "Activo",
+    "consumo_kwh": 15.5,
+    "zona_id": 3,
+    "categoria_id": 1
+  },
+  {
+    "id": 6,
+    "nombre": "Aire acondicionado",
+    "estado": "Revisión",
+    "consumo_kwh": 41.2,
+    "zona_id": 3,
+    "categoria_id": 2
+  },
+  {
+    "id": 7,
+    "nombre": "Medidor de energía",
+    "estado": "Activo",
+    "consumo_kwh": 24.3,
+    "zona_id": 1,
+    "categoria_id": 3
+  },
+  {
+    "id": 8,
+    "nombre": "Bombillo ahorrador",
+    "estado": "Activo",
+    "consumo_kwh": 10.6,
+    "zona_id": 2,
+    "categoria_id": 1
+  }
 ]

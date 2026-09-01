@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}404 - No encontrado{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="card border-0 shadow-sm mx-auto" style="max-width: 620px; border-radius: 16px; border: 1px solid #dfe6e3; background: #f7f9f8;">
+        <div class="card-body p-4 text-center">
+            <div class="display-1 fw-bold mb-3" style="color: #1d2a2a;">404</div>
+            <h1 class="h3 fw-bold mb-3" style="color: #1d2a2a;">Página no encontrada</h1>
+            <p class="mb-4 text-muted">La zona o recurso solicitado no existe o no está disponible.</p>
+            <a href="{% url 'dispositivos:inicio' %}" class="btn btn-dark">Volver al inicio</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
