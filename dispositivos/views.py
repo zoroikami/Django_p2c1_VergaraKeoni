@@ -39,3 +39,20 @@ def zona_detalle(request, zona_id):
         raise Http404("Zona no encontrada")
 
     return render(request, "dispositivos/zona_detalle.html", detalle)
+
+def resumen_zonas(request):
+    detalle =  listar_zonas_con_resumen()
+    if detalle is None:
+        raise Http404("Zona no encontrada")
+    
+    return render(request, "dispositivos/resumen_zonas.html", {"zonas": zonas})
+
+def catalogo(request):
+    dispositivos = cargar_dispositivos()
+    activos = sum(1 for item in dispositivos if item.get("estado") == "Activo")
+    contexto = {
+        "dispositivos": dispositivos,
+        "total": len(dispositivos),
+        "total_activos": activos,
+    }
+    return render(request, "dispositivos/resumen_zonas.html", contexto)

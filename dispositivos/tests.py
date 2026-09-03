@@ -17,3 +17,7 @@ class ZonasViewsTest(TestCase):
     def test_detalle_zona_inexistente_devuelve_404(self):
         response = self.client.get(reverse('dispositivos:zona_detalle', args=[999]))
         self.assertEqual(response.status_code, 404)
+
+    def test_resumen_zonas(self):
+        response =self.client.get(reverse('dispositivos:resumen_zonas', args=[999]))
+        self.assertEqual(response.status_code, 404)
