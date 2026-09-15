@@ -1,54 +1,58 @@
-import json
-from django.conf import settings
+from django.db.models import Count, F, Q, Sum
+
+from .models import Device, Zone
 
 
-def _cargar_json(nombre_archivo):
-    ruta = settings.BASE_DIR / "data" / nombre_archivo
-    with ruta.open(encoding="utf-8") as archivo:
-        datos = json.load(archivo)
+def cargar_dispositivos(organization_id=None):
+    queryset = Device.objects.filter(deleted_at__isnull=True)
+    if organization_id is not None:
+        queryset = queryset.filter(organization_id=organization_id)
+    return list(
+        queryset
+        .select_related("category", "zone", "organization")
+        .values(
+            "id",
+            "serial_number",
+            nombre=F("name"),
+            estado=F("status"),
+            consumo_kwh=F("consumption_kwh"),
+            zona_id=F("zone_id"),
+            categoria_id=F("category_id"),
+            categoria=F("category__name"),
+            zona=F("zone__name"),
+        )
+    )
 
-    if not isinstance(datos, list):
-        raise ValueError(f"Se esperaba una lista en {nombre_archivo}")
-    return datos
 
-
-def cargar_dispositivos():
-    return _cargar_json("dispositivos.json")
-
-
-def cargar_zonas():
-    return _cargar_json("zonas.json")
-
-
-def cargar_categorias():
-    return _cargar_json("categorias.json")
-
-
-def obtener_zona_detalle(zona_id):
-    zonas = cargar_zonas()
-    zona = next((item for item in zonas if item["id"] == zona_id), None)
+def obtener_zona_detalle(zona_id, organization_id=None):
+    zones = Zone.objects.filter(id=zona_id, deleted_at__isnull=True)
+    if organization_id is not None:
+        zones = zones.filter(organization_id=organization_id)
+    zona = zones.first()
     if zona is None:
         return None
 
-    dispositivos = cargar_dispositivos()
-    categorias = {item["id"]: item for item in cargar_categorias()}
-
     dispositivos_zona = [
         {
-            "id": dispositivo["id"],
-            "nombre": dispositivo["nombre"],
-            "consumo_kwh": float(dispositivo.get("consumo_kwh", 0)),
-            "categoria": categorias.get(dispositivo.get("categoria_id"), {"nombre": "Sin categoría"})["nombre"],
+            "id": dispositivo.id,
+            "nombre": dispositivo.name,
+            "consumo_kwh": float(dispositivo.consumption_kwh),
+            "categoria": dispositivo.category.name,
         }
-        for dispositivo in dispositivos
-        if dispositivo.get("zona_id") == zona_id
+        for dispositivo in Device.objects.filter(
+            zone=zona, deleted_at__isnull=True
+        ).select_related("category")
     ]
 
     consumo_total = sum(item["consumo_kwh"] for item in dispositivos_zona)
-    estado = "ALERTA" if consumo_total > float(zona.get("limite_kwh", 0)) else "NORMAL"
+    estado = "ALERTA" if consumo_total > float(zona.limit_kwh) else "NORMAL"
 
     return {
-        "zona": zona,
+        "zona": {
+            "id": zona.id,
+            "nombre": zona.name,
+            "limite_kwh": float(zona.limit_kwh),
+        },
         "dispositivos": dispositivos_zona,
         "consumo_total": consumo_total,
         "estado": estado,
@@ -56,27 +60,22 @@ def obtener_zona_detalle(zona_id):
     }
 
 
-def listar_zonas_con_resumen():
-    zonas = cargar_zonas()
-    dispositivos = cargar_dispositivos()
-    resumen = []
-
-    for zona in zonas:
-        zona_id = zona["id"]
-        zona_dispositivos = [
-            item for item in dispositivos if item.get("zona_id") == zona_id
-        ]
-        consumo_total = sum(float(item.get("consumo_kwh", 0)) for item in zona_dispositivos)
-        estado = "ALERTA" if consumo_total > float(zona.get("limite_kwh", 0)) else "NORMAL"
-        resumen.append(
-            {
-                "id": zona_id,
-                "nombre": zona["nombre"],
-                "limite_kwh": float(zona.get("limite_kwh", 0)),
-                "cantidad_dispositivos": len(zona_dispositivos),
-                "consumo_total": consumo_total,
-                "estado": estado,
-            }
-        )
-
-    return resumen
+def listar_zonas_con_resumen(organization_id=None):
+    zones = Zone.objects.filter(deleted_at__isnull=True)
+    if organization_id is not None:
+        zones = zones.filter(organization_id=organization_id)
+    resumen = zones.annotate(
+        cantidad_dispositivos=Count("devices", filter=Q(devices__deleted_at__isnull=True)),
+        consumo_total=Sum("devices__consumption_kwh", filter=Q(devices__deleted_at__isnull=True)),
+    )
+    return [
+        {
+            "id": zona.id,
+            "nombre": zona.name,
+            "limite_kwh": float(zona.limit_kwh),
+            "cantidad_dispositivos": zona.cantidad_dispositivos,
+            "consumo_total": float(zona.consumo_total or 0),
+            "estado": "ALERTA" if (zona.consumo_total or 0) > zona.limit_kwh else "NORMAL",
+        }
+        for zona in resumen
+    ]

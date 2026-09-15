@@ -102,11 +102,27 @@ Django_p2c1_VergaraKeoni/
 
 ## 📌 Estado Actual y Próximos Pasos
 
-- **Estado actual:**
-  - Configuración global de `TEMPLATES` y registro de la aplicación `dispositivos`.
-  - Plantilla base `base.html` con sistema de bloques (`{% block %}`) y enlaces dinámicos con `{% url %}`.
-  - Vistas `inicio` y `catalogo` operativas utilizando `render()` con inyección de contextos (`sistema`, `mensaje`, `asignatura` y lista `dispositivos`).
-  - Plantillas hijas con herencia `{% extends "base.html" %}` y manejo de colecciones con `{% for %}` y `{% empty %}`.
+El proyecto cuenta con modelos persistentes para organizaciones, departamentos, perfiles, categorías, zonas, dispositivos, mediciones, alertas y mantenimiento. Las vistas de catálogo y zonas consultan la base de datos y filtran por organización cuando el usuario autenticado posee un perfil.
 
-- dfsalfksdlkfjsd
+## 🧰 Flujo de trabajo
+
+```powershell
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+python manage.py check
+python manage.py migrate
+python manage.py seed_data
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+Admin: `http://127.0.0.1:8000/admin/`
+
+Las credenciales y la configuración de base de datos se cargan desde `.env`. No se debe versionar ese archivo; usar `.env.example` como referencia.
+
+## 🧪 Pruebas
+
+```powershell
+python manage.py test dispositivos
+```
 
