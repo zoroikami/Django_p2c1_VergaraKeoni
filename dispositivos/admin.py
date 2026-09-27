@@ -36,10 +36,14 @@ class DepartmentAdmin(AuditedAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(AuditedAdmin):
-	list_display = ("user", "organization", "department", "rut")
-	search_fields = ("user__username", "user__first_name", "user__last_name", "rut")
-	list_filter = ("organization", "department")
+	list_display = ("user", "organization", "department", "rut", "phone", "get_roles")
+	search_fields = ("user__username", "user__first_name", "user__last_name", "rut", "phone")
+	list_filter = ("organization", "department", "user__groups")
 	list_select_related = ("user", "organization", "department")
+
+	@admin.display(description="Roles / Grupos")
+	def get_roles(self, obj):
+		return ", ".join(obj.user.groups.values_list("name", flat=True)) or "Sin grupo"
 
 
 @admin.register(Category)

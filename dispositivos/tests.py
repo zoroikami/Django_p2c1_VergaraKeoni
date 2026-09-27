@@ -3,7 +3,14 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Category, Device, Measurement, Organization, UserProfile, Zone
+from .models import Category, Department, Device, Measurement, Organization, UserProfile, Zone
+from .roles import (
+    ROLE_ADMIN_ORG,
+    ROLE_CONSULTA,
+    ROLE_OPERADOR,
+    create_demo_users_clase4,
+    setup_roles_and_permissions,
+)
 
 class ZonasViewsTest(TestCase):
     @classmethod
@@ -119,3 +126,62 @@ class DomainRulesTest(TestCase):
         response = self.client.get(reverse("dispositivos:catalogo"))
         self.assertContains(response, "Equipo visible")
         self.assertNotContains(response, "Equipo oculto")
+
+
+class RolesAndPermissionsClase4Test(TestCase):
+    def setUp(self):
+        self.org_a = Organization.objects.create(legal_name="Org A", tax_id="ORG-A-001")
+        self.org_b = Organization.objects.create(legal_name="Org B", tax_id="ORG-B-002")
+        self.dept_a = Department.objects.create(organization=self.org_a, name="Dept A")
+        self.dept_b = Department.objects.create(organization=self.org_b, name="Dept B")
+        setup_roles_and_permissions()
+
+    def test_user_profile_clean_rejects_foreign_department(self):
+        user = get_user_model().objects.create_user(username="test_cross_user")
+        profile = UserProfile(
+            user=user,
+            organization=self.org_a,
+            department=self.dept_b,
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            profile.full_clean()
+        self.assertIn("department", ctx.exception.message_dict)
+
+    def test_user_profile_clean_accepts_valid_department(self):
+        user = get_user_model().objects.create_user(username="test_valid_user")
+        profile = UserProfile(
+            user=user,
+            organization=self.org_a,
+            department=self.dept_a,
+        )
+        profile.full_clean()
+        profile.save()
+        self.assertEqual(profile.department, self.dept_a)
+
+    def test_roles_and_permissions_matrix(self):
+        User = get_user_model()
+        users = create_demo_users_clase4(default_organization=self.org_a)
+        operador = User.objects.get(username="operador_demo")
+        consulta = User.objects.get(username="consulta_demo")
+        admin_org = User.objects.get(username="admin_demo")
+
+        # Operador: puede registrar mediciones y ver equipos, pero NO borrar
+        self.assertTrue(operador.has_perm("dispositivos.view_device"))
+        self.assertTrue(operador.has_perm("dispositivos.add_measurement"))
+        self.assertTrue(operador.has_perm("dispositivos.change_alertevent"))
+        self.assertFalse(operador.has_perm("dispositivos.delete_device"))
+        self.assertFalse(operador.has_perm("dispositivos.delete_measurement"))
+        self.assertFalse(operador.has_perm("dispositivos.change_device"))
+
+        # Consulta: solo lectura
+        self.assertTrue(consulta.has_perm("dispositivos.view_device"))
+        self.assertTrue(consulta.has_perm("dispositivos.view_measurement"))
+        self.assertFalse(consulta.has_perm("dispositivos.add_measurement"))
+        self.assertFalse(consulta.has_perm("dispositivos.change_measurement"))
+        self.assertFalse(consulta.has_perm("dispositivos.delete_device"))
+
+        # Admin Org: gestion operativa amplia, sin borrado fisico
+        self.assertTrue(admin_org.has_perm("dispositivos.add_device"))
+        self.assertTrue(admin_org.has_perm("dispositivos.change_device"))
+        self.assertTrue(admin_org.has_perm("dispositivos.add_measurement"))
+        self.assertFalse(admin_org.has_perm("dispositivos.delete_device"))

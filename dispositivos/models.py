@@ -173,8 +173,11 @@ class UserProfile(BaseModel):
 		return f"{self.user.get_full_name() or self.user.username} · {self.organization}"
 
 	def clean(self):
+		super().clean()
 		if self.department_id and self.department.organization_id != self.organization_id:
-			raise ValidationError("The department must belong to the same organization.")
+			raise ValidationError({
+				"department": "El departamento debe pertenecer a la organización seleccionada."
+			})
 
 
 class Measurement(BaseModel):
