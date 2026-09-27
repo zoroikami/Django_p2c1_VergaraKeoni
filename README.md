@@ -100,11 +100,16 @@ Django_p2c1_VergaraKeoni/
 
 ---
 
-## 📌 Estado Actual y Próximos Pasos
+## 📌 Estado Actual del Proyecto (Unidad 2 Completa)
 
-El proyecto cuenta con modelos persistentes para organizaciones, departamentos, perfiles, categorías, zonas, dispositivos, mediciones, alertas y mantenimiento. Las vistas de catálogo y zonas consultan la base de datos y filtran por organización cuando el usuario autenticado posee un perfil.
+El proyecto cuenta con la implementación completa de las 5 clases de la **Unidad 2**:
+- **Clase 1 (Modelo de Datos y Arquitectura):** Modelos de negocio con `BaseModel` abstracto (`created_at`, `updated_at`, `deleted_at`) y diseño modular.
+- **Clase 2 (Modelos y Migraciones):** Soporte multi-motor (SQLite/MySQL) vía `.env`, constraints de unicidad, índices y migraciones aplicadas.
+- **Clase 3 (Django Admin Básico):** Administración con `list_display`, `search_fields` cruzando relaciones, `list_filter`, `list_select_related`, `date_hierarchy` y representaciones `__str__` legibles.
+- **Clase 4 (Usuarios, Perfiles y Roles):** Integración `User + UserProfile` con validación organizacional en `clean()`, y roles con grupos (`Administrador Organizacional`, `Operador`, `Consulta`) bajo el principio de menor privilegio.
+- **Clase 5 (Seguridad en Admin y Scoping):** Aislamiento multi-tenant con `get_queryset` acotado por organización, exclusión de borrado lógico, `formfield_for_foreignkey` restrictivo, auto-asignación en `save_model`, permisos por objeto (`has_change_permission`), acción de archivado y `DepartmentInline`.
 
-## 🧰 Flujo de trabajo
+## 🧰 Flujo de Puesta en Marcha
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -112,15 +117,24 @@ Copy-Item .env.example .env
 python manage.py check
 python manage.py migrate
 python manage.py seed_data
-python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Admin: `http://127.0.0.1:8000/admin/`
+Panel de Administración: `http://127.0.0.1:8000/admin/`
 
-Las credenciales y la configuración de base de datos se cargan desde `.env`. No se debe versionar ese archivo; usar `.env.example` como referencia.
+### 👥 Usuarios de Demostración y Pruebas
+| Usuario | Rol | Contraseña | Organización |
+| :--- | :--- | :--- | :--- |
+| `admin` | Superusuario Global | `Admin123!` | Acceso Global |
+| `admin_norte` | Admin Organizacional | `Password123!` | EcoEnergy Norte SpA |
+| `operador_norte` | Operador | `Password123!` | EcoEnergy Norte SpA |
+| `consulta_norte` | Consulta (Sólo Lectura) | `Password123!` | EcoEnergy Norte SpA |
+| `admin_sur` | Admin Organizacional | `Password123!` | EcoEnergy Sur SpA |
+| `operador_sur` | Operador | `Password123!` | EcoEnergy Sur SpA |
+| `consulta_sur` | Consulta (Sólo Lectura) | `Password123!` | EcoEnergy Sur SpA |
+| `staff_sin_perfil` | Staff sin perfil | `Password123!` | Denegación segura (sin datos) |
 
-## 🧪 Pruebas
+## 🧪 Ejecución de Pruebas Automatizadas
 
 ```powershell
 python manage.py test dispositivos

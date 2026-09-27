@@ -1,5 +1,7 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.utils import timezone
 
+from core.admin_utils import get_user_organization
 from .models import (
 	AlertEvent,
 	AlertRule,
@@ -14,16 +16,86 @@ from .models import (
 )
 
 
+def check_scoped_object_permission(user, obj):
+	"""Comprueba si un objeto pertenece al ambito organizacional del usuario."""
+	if obj is None or user.is_superuser:
+		return True
+	profile = getattr(user, "profile", None)
+	if not profile or not profile.organization_id:
+		return False
+	user_org_id = profile.organization_id
+
+	if hasattr(obj, "organization_id") and obj.organization_id is not None:
+		return obj.organization_id == user_org_id
+	if hasattr(obj, "device") and obj.device is not None:
+		return obj.device.organization_id == user_org_id
+	if isinstance(obj, Organization):
+		return obj.id == user_org_id
+	return True
+
+
+@admin.action(
+	description="Archivar dispositivos seleccionados",
+	permissions=["change"],
+)
+def archive_devices(modeladmin, request, queryset):
+	"""Accion personalizada para borrado logico de dispositivos (Clase 5)."""
+	updated = queryset.filter(deleted_at__isnull=True).update(deleted_at=timezone.now())
+	modeladmin.message_user(
+		request,
+		f"{updated} dispositivo(s) archivado(s).",
+		level=messages.SUCCESS,
+	)
+
+
+@admin.action(
+	description="Archivar registros seleccionados (borrado logico)",
+	permissions=["change"],
+)
+def archive_selected_records(modeladmin, request, queryset):
+	"""Accion generica para borrado logico de registros con BaseModel (Clase 5)."""
+	updated = queryset.filter(deleted_at__isnull=True).update(deleted_at=timezone.now())
+	modeladmin.message_user(
+		request,
+		f"{updated} registro(s) archivado(s) exitosamente.",
+		level=messages.SUCCESS,
+	)
+
+
+class DepartmentInline(admin.TabularInline):
+	"""Inline para gestionar departamentos desde una organizacion (Clase 5, Slide 15)."""
+	model = Department
+	extra = 0
+	fields = ("name", "manager", "is_active")
+	show_change_link = True
+
+
 class AuditedAdmin(admin.ModelAdmin):
 	readonly_fields = ("created_at", "updated_at", "deleted_at")
 
 
 @admin.register(Organization)
 class OrganizationAdmin(AuditedAdmin):
-	list_display = ("legal_name", "tax_id", "trade_name", "is_active")
+	list_display = ("tax_id", "legal_name", "trade_name", "is_active")
 	search_fields = ("legal_name", "tax_id", "trade_name")
 	list_filter = ("is_active",)
 	ordering = ("legal_name",)
+	inlines = [DepartmentInline]
+
+	def get_queryset(self, request):
+		qs = super().get_queryset(request)
+		if request.user.is_superuser:
+			return qs
+		org = get_user_organization(request)
+		if not org:
+			return qs.none()
+		return qs.filter(pk=org.pk, deleted_at__isnull=True)
+
+	def has_change_permission(self, request, obj=None):
+		allowed = super().has_change_permission(request, obj)
+		if not allowed:
+			return False
+		return check_scoped_object_permission(request.user, obj)
 
 
 @admin.register(Department)
@@ -32,6 +104,37 @@ class DepartmentAdmin(AuditedAdmin):
 	search_fields = ("name", "organization__legal_name", "manager__username")
 	list_filter = ("organization", "is_active")
 	list_select_related = ("organization", "manager")
+	actions = [archive_selected_records]
+
+	def get_queryset(self, request):
+		qs = super().get_queryset(request)
+		if request.user.is_superuser:
+			return qs
+		org = get_user_organization(request)
+		if not org:
+			return qs.none()
+		return qs.filter(organization=org, deleted_at__isnull=True)
+
+	def formfield_for_foreignkey(self, db_field, request, **kwargs):
+		if not request.user.is_superuser:
+			org = get_user_organization(request)
+			if db_field.name == "organization":
+				kwargs["queryset"] = Organization.objects.filter(pk=org.pk) if org else Organization.objects.none()
+		return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+	def save_model(self, request, obj, form, change):
+		if not request.user.is_superuser:
+			obj.organization = get_user_organization(request)
+		super().save_model(request, obj, form, change)
+
+	def has_change_permission(self, request, obj=None):
+		allowed = super().has_change_permission(request, obj)
+		if not allowed:
+			return False
+		return check_scoped_object_permission(request.user, obj)
+
+	def has_delete_permission(self, request, obj=None):
+		return False
 
 
 @admin.register(UserProfile)
@@ -40,10 +143,47 @@ class UserProfileAdmin(AuditedAdmin):
 	search_fields = ("user__username", "user__first_name", "user__last_name", "rut", "phone")
 	list_filter = ("organization", "department", "user__groups")
 	list_select_related = ("user", "organization", "department")
+	actions = [archive_selected_records]
 
 	@admin.display(description="Roles / Grupos")
 	def get_roles(self, obj):
 		return ", ".join(obj.user.groups.values_list("name", flat=True)) or "Sin grupo"
+
+	def get_queryset(self, request):
+		qs = super().get_queryset(request)
+		if request.user.is_superuser:
+			return qs
+		org = get_user_organization(request)
+		if not org:
+			return qs.none()
+		return qs.filter(organization=org, deleted_at__isnull=True)
+
+	def formfield_for_foreignkey(self, db_field, request, **kwargs):
+		if not request.user.is_superuser:
+			org = get_user_organization(request)
+			if db_field.name == "organization":
+				kwargs["queryset"] = Organization.objects.filter(pk=org.pk) if org else Organization.objects.none()
+			elif db_field.name == "department":
+				kwargs["queryset"] = (
+					Department.objects.filter(organization=org, deleted_at__isnull=True)
+					if org
+					else Department.objects.none()
+				)
+		return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+	def save_model(self, request, obj, form, change):
+		if not request.user.is_superuser:
+			obj.organization = get_user_organization(request)
+		super().save_model(request, obj, form, change)
+
+	def has_change_permission(self, request, obj=None):
+		allowed = super().has_change_permission(request, obj)
+		if not allowed:
+			return False
+		return check_scoped_object_permission(request.user, obj)
+
+	def has_delete_permission(self, request, obj=None):
+		return False
 
 
 @admin.register(Category)
@@ -63,6 +203,37 @@ class ZoneAdmin(admin.ModelAdmin):
 	ordering = ("name",)
 	list_select_related = ("organization",)
 	readonly_fields = ("created_at", "updated_at")
+	actions = [archive_selected_records]
+
+	def get_queryset(self, request):
+		qs = super().get_queryset(request)
+		if request.user.is_superuser:
+			return qs
+		org = get_user_organization(request)
+		if not org:
+			return qs.none()
+		return qs.filter(organization=org, deleted_at__isnull=True)
+
+	def formfield_for_foreignkey(self, db_field, request, **kwargs):
+		if not request.user.is_superuser:
+			org = get_user_organization(request)
+			if db_field.name == "organization":
+				kwargs["queryset"] = Organization.objects.filter(pk=org.pk) if org else Organization.objects.none()
+		return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+	def save_model(self, request, obj, form, change):
+		if not request.user.is_superuser:
+			obj.organization = get_user_organization(request)
+		super().save_model(request, obj, form, change)
+
+	def has_change_permission(self, request, obj=None):
+		allowed = super().has_change_permission(request, obj)
+		if not allowed:
+			return False
+		return check_scoped_object_permission(request.user, obj)
+
+	def has_delete_permission(self, request, obj=None):
+		return False
 
 
 @admin.register(Device)
@@ -81,6 +252,53 @@ class DeviceAdmin(admin.ModelAdmin):
 	ordering = ("name",)
 	list_select_related = ("organization", "category", "zone")
 	readonly_fields = ("created_at", "updated_at")
+	actions = [archive_devices]
+
+	def get_queryset(self, request):
+		qs = super().get_queryset(request)
+		if request.user.is_superuser:
+			return qs
+		organization = get_user_organization(request)
+		if not organization:
+			return qs.none()
+		return qs.filter(organization=organization, deleted_at__isnull=True)
+
+	def formfield_for_foreignkey(self, db_field, request, **kwargs):
+		if not request.user.is_superuser:
+			organization = get_user_organization(request)
+			if db_field.name == "zone":
+				if organization:
+					kwargs["queryset"] = Zone.objects.filter(
+						organization=organization,
+						deleted_at__isnull=True,
+					)
+				else:
+					kwargs["queryset"] = Zone.objects.none()
+			elif db_field.name == "organization":
+				if organization:
+					kwargs["queryset"] = Organization.objects.filter(pk=organization.pk)
+				else:
+					kwargs["queryset"] = Organization.objects.none()
+		return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+	def save_model(self, request, obj, form, change):
+		if not request.user.is_superuser:
+			obj.organization = get_user_organization(request)
+		super().save_model(request, obj, form, change)
+
+	def has_change_permission(self, request, obj=None):
+		allowed = super().has_change_permission(request, obj)
+		if not allowed:
+			return False
+		if obj is None or request.user.is_superuser:
+			return True
+		organization = get_user_organization(request)
+		if not organization:
+			return False
+		return obj.organization_id == organization.id
+
+	def has_delete_permission(self, request, obj=None):
+		return False
 
 
 @admin.register(Measurement)
@@ -92,6 +310,47 @@ class MeasurementAdmin(AuditedAdmin):
 	date_hierarchy = "measured_at"
 	list_select_related = ("device", "device__organization", "recorded_by")
 	list_per_page = 50
+	actions = [archive_selected_records]
+
+	def get_queryset(self, request):
+		qs = super().get_queryset(request)
+		if request.user.is_superuser:
+			return qs
+		organization = get_user_organization(request)
+		if not organization:
+			return qs.none()
+		return qs.filter(device__organization=organization, deleted_at__isnull=True)
+
+	def formfield_for_foreignkey(self, db_field, request, **kwargs):
+		if db_field.name == "device" and not request.user.is_superuser:
+			organization = get_user_organization(request)
+			if organization:
+				kwargs["queryset"] = Device.objects.filter(
+					organization=organization,
+					deleted_at__isnull=True,
+				)
+			else:
+				kwargs["queryset"] = Device.objects.none()
+		return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+	def save_model(self, request, obj, form, change):
+		if not request.user.is_superuser and not obj.recorded_by_id:
+			obj.recorded_by = request.user
+		super().save_model(request, obj, form, change)
+
+	def has_change_permission(self, request, obj=None):
+		allowed = super().has_change_permission(request, obj)
+		if not allowed:
+			return False
+		if obj is None or request.user.is_superuser:
+			return True
+		organization = get_user_organization(request)
+		if not organization:
+			return False
+		return obj.device.organization_id == organization.id
+
+	def has_delete_permission(self, request, obj=None):
+		return False
 
 
 @admin.register(AlertRule)
@@ -109,6 +368,25 @@ class AlertEventAdmin(AuditedAdmin):
 	list_filter = ("status", "device__organization", "rule__severity")
 	list_select_related = ("device", "rule", "resolved_by")
 	ordering = ("-created_at",)
+	actions = [archive_selected_records]
+
+	def get_queryset(self, request):
+		qs = super().get_queryset(request)
+		if request.user.is_superuser:
+			return qs
+		organization = get_user_organization(request)
+		if not organization:
+			return qs.none()
+		return qs.filter(device__organization=organization, deleted_at__isnull=True)
+
+	def has_change_permission(self, request, obj=None):
+		allowed = super().has_change_permission(request, obj)
+		if not allowed:
+			return False
+		return check_scoped_object_permission(request.user, obj)
+
+	def has_delete_permission(self, request, obj=None):
+		return False
 
 
 @admin.register(MaintenanceRequest)
@@ -117,3 +395,45 @@ class MaintenanceRequestAdmin(AuditedAdmin):
 	search_fields = ("device__name", "device__serial_number", "reason")
 	list_filter = ("organization", "request_type", "status", "priority")
 	list_select_related = ("device", "organization", "assigned_to")
+	actions = [archive_selected_records]
+
+	def get_queryset(self, request):
+		qs = super().get_queryset(request)
+		if request.user.is_superuser:
+			return qs
+		organization = get_user_organization(request)
+		if not organization:
+			return qs.none()
+		return qs.filter(organization=organization, deleted_at__isnull=True)
+
+	def formfield_for_foreignkey(self, db_field, request, **kwargs):
+		if not request.user.is_superuser:
+			organization = get_user_organization(request)
+			if db_field.name == "device":
+				if organization:
+					kwargs["queryset"] = Device.objects.filter(
+						organization=organization,
+						deleted_at__isnull=True,
+					)
+				else:
+					kwargs["queryset"] = Device.objects.none()
+			elif db_field.name == "organization":
+				if organization:
+					kwargs["queryset"] = Organization.objects.filter(pk=organization.pk)
+				else:
+					kwargs["queryset"] = Organization.objects.none()
+		return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+	def save_model(self, request, obj, form, change):
+		if not request.user.is_superuser:
+			obj.organization = get_user_organization(request)
+		super().save_model(request, obj, form, change)
+
+	def has_change_permission(self, request, obj=None):
+		allowed = super().has_change_permission(request, obj)
+		if not allowed:
+			return False
+		return check_scoped_object_permission(request.user, obj)
+
+	def has_delete_permission(self, request, obj=None):
+		return False
