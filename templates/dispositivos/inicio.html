@@ -1,0 +1,11 @@
+<!-- templates/dispositivos/inicio.html -->
+{% extends "base.html" %}
+
+{% block title %}Inicio | EcoEnergy{% endblock %}
+
+{% block content %}
+<h1>{{ sistema }}</h1>
+<p>{{ mensaje }}</p>
+<p>Curso: {{ asignatura }}</p>
+<li class="breadcrumb-item"><a href="{% url 'dispositivos:resumen_zonas' %}" class="text-decoration-none text-dark">Resumen de zonas</a></li>
+{% endblock %}

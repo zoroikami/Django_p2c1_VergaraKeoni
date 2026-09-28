@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "nombre": "Zona Norte",
+    "limite_kwh": 120.5
+  },
+  {
+    "id": 2,
+    "nombre": "Zona Sur",
+    "limite_kwh": 180.0
+  },
+  {
+    "id": 3,
+    "nombre": "Zona Centro",
+    "limite_kwh": 210.25
+  }
+]

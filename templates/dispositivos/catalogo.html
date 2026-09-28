@@ -1,0 +1,68 @@
+<!-- templates/dispositivos/catalogo.html -->
+{% extends "base.html" %}
+
+{% block title %}Dispositivos | EcoEnergy{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <h1 class="fw-bold text-uppercase mb-4" style="font-size: clamp(2rem, 2vw, 2.5rem); letter-spacing: -0.04em; color: #1d2a2a;">Catálogo de dispositivos</h1>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100" style="background: #f3f5f4; border: 1px solid #dfe6e3; border-radius: 10px;">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase">Total de dispositivos</div>
+                    <div class="mt-2 fw-bold" style="font-size: 2rem; color: #1d2a2a;">{{ total }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100" style="background: #f3f5f4; border: 1px solid #dfe6e3; border-radius: 10px;">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase">Dispositivos activos</div>
+                    <div class="mt-2 fw-bold text-success" style="font-size: 2rem;">{{ total_activos }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm overflow-hidden" style="border: 1px solid #dfe6e3; border-radius: 10px;">
+        <div class="card-body p-0">
+            {% if dispositivos %}
+                <div class="table-responsive">
+                    <table class="table table-borderless align-middle mb-0">
+                        <thead style="background: #eceeed; color: #1d2a2a;">
+                            <tr>
+                                <th scope="col" class="px-3 py-3 fw-bold">Dispositivo</th>
+                                <th scope="col" class="py-3 fw-bold">Estado</th>
+                                <th scope="col" class="text-end px-3 py-3 fw-bold">Consumo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dispositivo in dispositivos %}
+                                <tr style="border-top: 1px solid #e3e8e5;">
+                                    <td class="px-3 py-3 fw-bold" style="color: #1d2a2a;">{{ dispositivo.nombre }}</td>
+                                    <td class="py-3">
+                                        {% if dispositivo.estado == 'Activo' %}
+                                            <span class="badge rounded-pill px-3 py-2" style="background: #dfeee4; color: #2c6d4d; font-weight: 600;">{{ dispositivo.estado }}</span>
+                                        {% else %}
+                                            <span class="badge rounded-pill px-3 py-2" style="background: #dfe3e7; color: #4d5860; font-weight: 600;">{{ dispositivo.estado }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end px-3 py-3 fw-semibold" style="color: #1d2a2a;">{{ dispositivo.consumo_kwh }} kWh</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center p-5">
+                    <h2 class="h5 fw-bold mb-2">No hay dispositivos registrados</h2>
+                    <p class="text-muted mb-0">Cuando agregues dispositivos, aparecerán aquí.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

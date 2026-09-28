@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Zonas | EcoEnergy{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb mb-0" style="font-size: 0.95rem; color: #3a4a4a;">
+            <li class="breadcrumb-item"><a href="{% url 'dispositivos:inicio' %}" class="text-decoration-none text-dark">EcoEnergy</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Zonas</li>
+        </ol>
+    </nav>
+
+    <h1 class="fw-bold text-uppercase mb-4" style="font-size: clamp(2rem, 2vw, 2.5rem); letter-spacing: -0.04em; color: #1d2a2a;">ZONAS DE CONSUMO</h1>
+
+    {% if zonas %}
+        <div class="row g-3">
+            {% for zona in zonas %}
+            <div class="col-12 col-md-4">
+                <div class="card h-100 border-0 shadow-sm" style="background: #f3f5f4; border: 1px solid #dfe6e3; border-radius: 12px;">
+                    <div class="card-body p-3">
+                        <h2 class="h4 fw-bold mb-3" style="color: #1d2a2a;">Zona {{ zona.id }}</h2>
+                        <p class="mb-2"><strong>Límite:</strong> {{ zona.limite_kwh }} kWh</p>
+                        <p class="mb-2"><strong>Dispositivos:</strong> {{ zona.cantidad_dispositivos }}</p>
+                        <p class="mb-3"><strong>Consumo:</strong> {{ zona.consumo_total }} kWh</p>
+
+                        <div class="mb-3">
+                            <span class="badge rounded-pill px-3 py-2 {% if zona.estado == 'ALERTA' %}text-bg-warning{% else %}" style="background: #dfeee4; color: #2c6d4d; font-weight: 600;">{% endif %}{{ zona.estado }}</span>
+                        </div>
+
+                        <a href="{% url 'dispositivos:zona_detalle' zona.id %}" class="btn btn-outline-dark btn-sm">Ver detalle</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-secondary">No hay zonas disponibles.</div>
+    {% endif %}
+</div>
+{% endblock %}
