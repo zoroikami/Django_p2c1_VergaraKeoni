@@ -39,6 +39,8 @@ class Zone(BaseModel):
 
 	class Meta:
 		ordering = ("organization__legal_name", "name")
+		verbose_name = "zone"
+		verbose_name_plural = "zones"
 		constraints = [
 			models.UniqueConstraint(
 				fields=("organization", "name"),
@@ -82,6 +84,8 @@ class Device(BaseModel):
 
 	class Meta:
 		ordering = ("name",)
+		verbose_name = "device"
+		verbose_name_plural = "devices"
 		indexes = [models.Index(fields=("organization", "status"))]
 
 	def __str__(self):
@@ -106,6 +110,8 @@ class Organization(BaseModel):
 
 	class Meta:
 		ordering = ("legal_name",)
+		verbose_name = "organization"
+		verbose_name_plural = "organizations"
 
 	def __str__(self):
 		return self.trade_name or self.legal_name
@@ -130,6 +136,8 @@ class Department(BaseModel):
 
 	class Meta:
 		ordering = ("organization__legal_name", "name")
+		verbose_name = "department"
+		verbose_name_plural = "departments"
 		constraints = [
 			models.UniqueConstraint(
 				fields=("organization", "name"),
@@ -169,6 +177,10 @@ class UserProfile(BaseModel):
 	phone = models.CharField(max_length=30, blank=True)
 	address = models.CharField(max_length=200, blank=True)
 
+	class Meta:
+		verbose_name = "user profile"
+		verbose_name_plural = "user profiles"
+
 	def __str__(self):
 		return f"{self.user.get_full_name() or self.user.username} · {self.organization}"
 
@@ -205,6 +217,8 @@ class Measurement(BaseModel):
 
 	class Meta:
 		ordering = ("-measured_at",)
+		verbose_name = "measurement"
+		verbose_name_plural = "measurements"
 		indexes = [models.Index(fields=("device", "measured_at"))]
 
 	def __str__(self):
@@ -264,6 +278,10 @@ class AlertEvent(BaseModel):
 	resolved_at = models.DateTimeField(null=True, blank=True)
 	notes = models.TextField(blank=True)
 
+	class Meta:
+		verbose_name = "alert event"
+		verbose_name_plural = "alert events"
+
 	def __str__(self):
 		return f"{self.device} · {self.get_status_display()}"
 
@@ -296,6 +314,10 @@ class MaintenanceRequest(BaseModel):
 	actions_taken = models.TextField(blank=True)
 	result = models.TextField(blank=True)
 	cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+	class Meta:
+		verbose_name = "maintenance request"
+		verbose_name_plural = "maintenance requests"
 
 	def __str__(self):
 		return f"{self.device} · {self.get_request_type_display()}"
