@@ -7,8 +7,23 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.admin_utils import get_user_organization
-from .admin import DeviceAdmin, MeasurementAdmin, archive_devices
-from .models import Category, Department, Device, Measurement, Organization, UserProfile, Zone
+from .admin import (
+    DepartmentAdmin,
+    DeviceAdmin,
+    MaintenanceRequestAdmin,
+    MeasurementAdmin,
+    archive_devices,
+)
+from .models import (
+    Category,
+    Department,
+    Device,
+    MaintenanceRequest,
+    Measurement,
+    Organization,
+    UserProfile,
+    Zone,
+)
 from .roles import (
     ROLE_ADMIN_ORG,
     ROLE_CONSULTA,
@@ -198,6 +213,8 @@ class AdminSecurityScopingClase5Test(TestCase):
         self.factory = RequestFactory()
         self.device_admin = DeviceAdmin(Device, self.site)
         self.measurement_admin = MeasurementAdmin(Measurement, self.site)
+        self.dept_admin = DepartmentAdmin(Department, self.site)
+        self.maint_admin = MaintenanceRequestAdmin(MaintenanceRequest, self.site)
 
         # Dos organizaciones independientes (Norte y Sur)
         self.org_norte = Organization.objects.create(legal_name="EcoEnergy Norte SpA", tax_id="CL5-NTE-01")
@@ -354,3 +371,63 @@ class AdminSecurityScopingClase5Test(TestCase):
         archive_devices(self.device_admin, req_norte, Device.objects.filter(pk=active_dev.pk))
         active_dev.refresh_from_db()
         self.assertIsNotNone(active_dev.deleted_at)
+
+    def test_has_view_permission_restricts_object_to_own_organization(self):
+        req_norte = self.factory.get("/admin/")
+        req_norte.user = self.user_norte
+
+        self.assertTrue(self.device_admin.has_view_permission(req_norte, self.dev_norte_1))
+        self.assertFalse(self.device_admin.has_view_permission(req_norte, self.dev_sur_1))
+
+    def test_formfield_for_foreignkey_department_and_maintenance(self):
+        req_norte = self.factory.get("/admin/")
+        req_norte.user = self.user_norte
+
+        # Selector de equipos en mantenimiento limitado a la organizacion del usuario
+        db_field_device = MaintenanceRequest._meta.get_field("device")
+        field_device = self.maint_admin.formfield_for_foreignkey(db_field_device, req_norte)
+        self.assertIn(self.dev_norte_1, field_device.queryset)
+        self.assertNotIn(self.dev_sur_1, field_device.queryset)
+
+        # Selector de usuario asignado en mantenimiento limitado a la organizacion del usuario
+        db_field_assigned = MaintenanceRequest._meta.get_field("assigned_to")
+        field_assigned = self.maint_admin.formfield_for_foreignkey(db_field_assigned, req_norte)
+        self.assertIn(self.user_norte, field_assigned.queryset)
+        self.assertNotIn(self.user_sur, field_assigned.queryset)
+
+    def test_defense_question_operador_norte_cannot_interact_with_sur(self):
+        # Otorgar permisos operativos reales al usuario operador
+        view_device = Permission.objects.get(codename="view_device")
+        add_meas = Permission.objects.get(codename="add_measurement")
+        view_meas = Permission.objects.get(codename="view_measurement")
+        self.user_norte.user_permissions.add(view_device, add_meas, view_meas)
+
+        self.client.force_login(self.user_norte)
+
+        # 1. Changelist de dispositivos en Django Admin: solo ve los de EcoEnergy Norte
+        response = self.client.get(reverse("admin:dispositivos_device_changelist"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.dev_norte_1.name)
+        self.assertNotContains(response, self.dev_sur_1.name)
+
+        # 2. Intento de acceso directo por manipulacion de ID en URL a dispositivo de Sur:
+        # Django Admin bloquea el acceso (redireccion segura con codigo 302 hacia /admin/ o changelist, o 403/404)
+        response_sur = self.client.get(
+            reverse("admin:dispositivos_device_change", args=[self.dev_sur_1.pk])
+        )
+        self.assertIn(response_sur.status_code, [302, 403, 404])
+        if response_sur.status_code == 302:
+            self.assertIn(response_sur.url, [reverse("admin:index"), reverse("admin:dispositivos_device_changelist")])
+
+        # Verificacion con follow=True: nunca se renderiza la informacion del equipo de Sur
+        response_followed = self.client.get(
+            reverse("admin:dispositivos_device_change", args=[self.dev_sur_1.pk]),
+            follow=True,
+        )
+        self.assertNotContains(response_followed, self.dev_sur_1.name)
+
+        # 3. Formulario de medicion: en el selector de device NO aparece el de Sur
+        response_add_meas = self.client.get(reverse("admin:dispositivos_measurement_add"))
+        self.assertEqual(response_add_meas.status_code, 200)
+        self.assertContains(response_add_meas, self.dev_norte_1.name)
+        self.assertNotContains(response_add_meas, self.dev_sur_1.name)
