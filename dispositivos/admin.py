@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from core.admin_utils import get_user_organization
+from .forms import DeviceForm
 from .models import (
 	AlertEvent,
 	AlertRule,
@@ -294,6 +295,7 @@ class ZoneAdmin(AuditedAdmin):
 
 @admin.register(Device)
 class DeviceAdmin(AuditedAdmin):
+	form = DeviceForm
 	list_display = (
 		"name",
 		"serial_number",
