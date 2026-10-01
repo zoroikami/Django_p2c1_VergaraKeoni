@@ -21,7 +21,7 @@ ROLE_PERMISSIONS = {
         ("alertrule", ["add_alertrule", "change_alertrule", "view_alertrule"]),
         ("alertevent", ["change_alertevent", "view_alertevent"]),
         ("maintenancerequest", ["add_maintenancerequest", "change_maintenancerequest", "view_maintenancerequest"]),
-        ("organization", ["view_organization"]),
+        ("organization", ["change_organization", "view_organization"]),
     ],
     ROLE_OPERADOR: [
         # Operador: registrar consumo, visualizar equipos/zonas y actualizar alertas/mantenimiento

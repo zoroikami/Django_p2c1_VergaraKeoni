@@ -6,7 +6,7 @@ Proyecto Back End desarrollado con **Python** y **Django** para la asignatura **
 
 ## 🎯 Descripción y Objetivo
 
-**EcoEnergy** es una aplicación web orientada al monitoreo energético responsable y a la visualización de dispositivos de control. Su objetivo actual es implementar una arquitectura desacoplada mediante el uso de vistas (`views.py`), contextos de datos y plantillas HTML (`templates`) con herencia (`base.html`) y navegación basada en nombres de rutas.
+**EcoEnergy** administra organizaciones, departamentos, zonas, dispositivos y mediciones de consumo. Incluye un Django Admin con permisos por organización, validaciones de negocio y archivado lógico.
 
 ---
 
@@ -43,16 +43,27 @@ cd Django_p2c1_VergaraKeoni
 - **Linux / macOS / Git Bash:**
   ```bash
   python3 -m venv .venv
-  source .venv/Scripts/activate   # o source .venv/bin/activate
+  source .venv/bin/activate
   ```
 
-### 3. Instalación de Dependencias
+### 3. Instalación de dependencias y datos de demostración
 
 Con el entorno virtual activado:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+Copiar `.env.example` a `.env` (PowerShell: `Copy-Item .env.example .env`; macOS/Linux: `cp .env.example .env`). La configuración de ejemplo usa SQLite. Después ejecutar:
+
+```bash
+python manage.py check
+python manage.py migrate
+python manage.py seed_data
+python manage.py runserver
+```
+
+`seed_data` puede ejecutarse varias veces: actualiza los datos de demostración sin duplicar las ocho mediciones y vuelve a dejar activos los ocho dispositivos de la demo. Agrega **EcoEnergy Norte** y **EcoEnergy Sur**, cuatro zonas, tres categorías, un dispositivo archivado (`SN-NTE-ARCH-001`), departamentos y las cuentas indicadas abajo. Una migración histórica también puede conservar la organización técnica `Legacy EcoEnergy Organization`; no forma parte de la demo. La base SQLite se genera localmente y no se versiona.
 
 ---
 
@@ -83,15 +94,20 @@ Django_p2c1_VergaraKeoni/
 │   ├── urls.py           # Enrutador principal
 │   ├── wsgi.py
 │   └── asgi.py
+├── core/admin_utils.py  # Organización del usuario actual
 ├── dispositivos/
-│   ├── apps.py
-│   ├── urls.py           # Rutas locales (app_name = "dispositivos")
-│   └── views.py          # Lógica de vistas y preparación de contextos
+│   ├── models.py         # Entidades, auditoría y validaciones clean()
+│   ├── admin.py          # Admin, Inline, acciones y scoping
+│   ├── roles.py          # Grupos y permisos
+│   ├── management/commands/seed_data.py
+│   ├── migrations/       # Esquema versionado
+│   ├── tests.py
+│   ├── views.py
+│   └── urls.py
 ├── templates/
-│   ├── base.html         # Plantilla base con navegación y bloques compartidos
+│   ├── base.html
 │   └── dispositivos/
-│       ├── inicio.html   # Plantilla hija con contexto de bienvenida
-│       └── catalogo.html # Plantilla hija con iteración de colección de datos
+├── .env.example
 ├── .gitignore
 ├── manage.py
 ├── requirements.txt
@@ -109,17 +125,6 @@ El proyecto cuenta con la implementación completa de las 5 clases de la **Unida
 - **Clase 4 (Usuarios, Perfiles y Roles):** Integración `User + UserProfile` con validación organizacional en `clean()`, y roles con grupos (`Administrador Organizacional`, `Operador`, `Consulta`) bajo el principio de menor privilegio.
 - **Clase 5 (Seguridad en Admin y Scoping):** Aislamiento multi-tenant con `get_queryset` acotado por organización, exclusión de borrado lógico, `formfield_for_foreignkey` restrictivo, auto-asignación en `save_model`, permisos por objeto (`has_change_permission`), acción de archivado y `DepartmentInline`.
 
-## 🧰 Flujo de Puesta en Marcha
-
-```powershell
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-python manage.py check
-python manage.py migrate
-python manage.py seed_data
-python manage.py runserver
-```
-
 Panel de Administración: `http://127.0.0.1:8000/admin/`
 
 ### 👥 Usuarios de Demostración y Pruebas
@@ -136,7 +141,15 @@ Panel de Administración: `http://127.0.0.1:8000/admin/`
 
 ## 🧪 Ejecución de Pruebas Automatizadas
 
-```powershell
+```bash
 python manage.py test dispositivos
 ```
 
+## Demostración de Admin Pro
+
+1. Ingresar como `admin_norte`. En **Organizations**, abrir **EcoEnergy Norte**. La tabla **Departments** permite agregar o editar departamentos en el mismo formulario; guardar con **Save**. El rol Administrador Organizacional puede cambiar solo su propia organización.
+2. Como `admin_norte`, abrir **Devices**, seleccionar un dispositivo activo de Norte y ejecutar **Archivar dispositivos seleccionados**. Aparece un mensaje con la cantidad archivada. El registro conserva su fila en la base con `deleted_at` y deja de aparecer en la lista de ese usuario. La eliminación física está deshabilitada en el Admin.
+3. Para mostrar la validación, entrar como `admin`, abrir **Devices → Add device**, elegir **EcoEnergy Norte** como organización y una zona de **EcoEnergy Sur**; completar los demás campos y pulsar **Save**. El formulario marca **Zone** con el mensaje «La zona debe pertenecer a la misma organización que el dispositivo». También se puede probar en **User profiles** asignando a un perfil de Norte un departamento de Sur.
+4. Para evidenciar el borrado lógico precargado, entrar como `admin` y buscar `SN-NTE-ARCH-001` en **Devices**; su campo `deleted_at` contiene la fecha de archivo. Como `operador_norte` o `consulta_norte`, la lista solo muestra datos propios y activos.
+
+Para el informe, capturar la vista de la organización con el Inline, la lista de dispositivos inmediatamente después de archivar con el mensaje de éxito y el formulario de dispositivo con el error de zona visible.

@@ -1,7 +1,8 @@
+from datetime import UTC, datetime
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 
 from dispositivos.models import (
     Category,
@@ -48,7 +49,7 @@ class Command(BaseCommand):
         for name, desc in cat_data.items():
             cat, _ = Category.objects.update_or_create(
                 name=name,
-                defaults={"description": desc, "is_active": True},
+                defaults={"description": desc, "is_active": True, "deleted_at": None},
             )
             categories[name] = cat
 
@@ -100,7 +101,7 @@ class Command(BaseCommand):
             },
         ]
 
-        now = timezone.now()
+        seeded_at = datetime(2026, 1, 1, 12, tzinfo=UTC)
         for org_conf in org_configs:
             org, _ = Organization.objects.update_or_create(
                 tax_id=org_conf["tax_id"],
@@ -109,6 +110,7 @@ class Command(BaseCommand):
                     "trade_name": org_conf["trade_name"],
                     "contact": org_conf["contact"],
                     "is_active": True,
+                    "deleted_at": None,
                 },
             )
 
@@ -118,7 +120,7 @@ class Command(BaseCommand):
                 dept, _ = Department.objects.update_or_create(
                     organization=org,
                     name=d_name,
-                    defaults={"description": f"Departamento {d_name}", "is_active": True},
+                    defaults={"description": f"Departamento {d_name}", "is_active": True, "deleted_at": None},
                 )
                 departments[d_name] = dept
 
@@ -128,7 +130,7 @@ class Command(BaseCommand):
                 zone, _ = Zone.objects.update_or_create(
                     organization=org,
                     name=z_name,
-                    defaults={"limit_kwh": limit, "is_active": True},
+                    defaults={"limit_kwh": limit, "is_active": True, "deleted_at": None},
                 )
                 zones[z_name] = zone
 
@@ -160,6 +162,7 @@ class Command(BaseCommand):
                         "department": first_dept,
                         "rut": rut,
                         "phone": "+56987654321",
+                        "deleted_at": None,
                     },
                 )
 
@@ -174,18 +177,34 @@ class Command(BaseCommand):
                         "zone": zones[z_name],
                         "status": Device.STATUS_ACTIVE,
                         "consumption_kwh": cons,
+                        "deleted_at": None,
                     },
                 )
 
                 # Medicion de ejemplo
-                Measurement.objects.get_or_create(
+                Measurement.objects.update_or_create(
                     device=dev,
-                    measured_at=now,
+                    measured_at=seeded_at,
                     defaults={
                         "value_kwh": cons,
                         "unit": "kWh",
                         "source": Measurement.SOURCE_AUTOMATIC,
                         "integration_name": "API-IoT-Gateway",
+                        "deleted_at": None,
+                    },
+                )
+
+            if org_conf["tax_id"] == "76.111.111-1":
+                Device.objects.update_or_create(
+                    serial_number="SN-NTE-ARCH-001",
+                    defaults={
+                        "name": "Medidor Histórico Norte",
+                        "organization": org,
+                        "category": categories["Monitoreo"],
+                        "zone": zones["Zona Interior Norte"],
+                        "status": Device.STATUS_RETIRED,
+                        "consumption_kwh": 12.75,
+                        "deleted_at": seeded_at,
                     },
                 )
 

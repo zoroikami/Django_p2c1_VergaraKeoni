@@ -1,7 +1,10 @@
+from io import StringIO
+
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
 from django.contrib.admin.sites import AdminSite
+from django.core.management import call_command
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -13,6 +16,7 @@ from .admin import (
     MaintenanceRequestAdmin,
     MeasurementAdmin,
     archive_devices,
+    archive_selected_records,
 )
 from .models import (
     Category,
@@ -354,6 +358,57 @@ class AdminSecurityScopingClase5Test(TestCase):
         req_norte.user = self.user_norte
         self.assertFalse(self.device_admin.has_delete_permission(req_norte, self.dev_norte_1))
 
+    def test_organization_admin_allows_own_inline_department_edit(self):
+        setup_roles_and_permissions()
+        self.user_norte.groups.add(Group.objects.get(name=ROLE_ADMIN_ORG))
+        self.client.force_login(self.user_norte)
+        url = reverse("admin:dispositivos_organization_change", args=[self.org_norte.pk])
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="departments-TOTAL_FORMS"')
+        self.assertContains(response, 'name="departments-__prefix__-name"')
+
+        response = self.client.post(url, {
+            "legal_name": self.org_norte.legal_name,
+            "tax_id": self.org_norte.tax_id,
+            "trade_name": "EcoEnergy Norte",
+            "contact": "contacto@norte.example",
+            "is_active": "on",
+            "departments-TOTAL_FORMS": "1",
+            "departments-INITIAL_FORMS": "0",
+            "departments-MIN_NUM_FORMS": "0",
+            "departments-MAX_NUM_FORMS": "1000",
+            "departments-0-name": "Nuevo departamento Norte",
+            "departments-0-is_active": "on",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Department.objects.filter(
+            organization=self.org_norte, name="Nuevo departamento Norte"
+        ).exists())
+
+        foreign_response = self.client.get(reverse(
+            "admin:dispositivos_organization_change", args=[self.org_sur.pk]
+        ))
+        self.assertIn(foreign_response.status_code, (302, 403, 404))
+
+    def test_device_admin_shows_zone_validation_on_field(self):
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("admin:dispositivos_device_add"),
+            {
+                "name": "Equipo cruzado",
+                "organization": self.org_norte.pk,
+                "category": self.category.pk,
+                "zone": self.zone_sur.pk,
+                "status": Device.STATUS_ACTIVE,
+                "consumption_kwh": "10.00",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("zone", response.context["adminform"].form.errors)
+        self.assertContains(response, "La zona debe pertenecer a la misma organización")
+
     def test_archive_devices_action(self):
         from django.contrib.messages.storage.fallback import FallbackStorage
         active_dev = Device.objects.create(
@@ -371,6 +426,28 @@ class AdminSecurityScopingClase5Test(TestCase):
         archive_devices(self.device_admin, req_norte, Device.objects.filter(pk=active_dev.pk))
         active_dev.refresh_from_db()
         self.assertIsNotNone(active_dev.deleted_at)
+        self.assertTrue(Device.objects.filter(pk=active_dev.pk).exists())
+        self.assertIn("1 dispositivo(s) archivado(s)", str(list(req_norte._messages)[0]))
+
+    def test_generic_archive_action_keeps_department_record(self):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+
+        department = Department.objects.create(
+            organization=self.org_norte, name="Departamento para archivar"
+        )
+        request = self.factory.post("/admin/dispositivos/department/")
+        request.user = self.user_norte
+        request.session = {}
+        request._messages = FallbackStorage(request)
+
+        archive_selected_records(
+            self.dept_admin, request, Department.objects.filter(pk=department.pk)
+        )
+        department.refresh_from_db()
+        self.assertIsNotNone(department.deleted_at)
+        self.assertTrue(Department.objects.filter(pk=department.pk).exists())
+        self.assertIn("1 registro(s) archivado(s) exitosamente", str(list(request._messages)[0]))
+
 
     def test_has_view_permission_restricts_object_to_own_organization(self):
         req_norte = self.factory.get("/admin/")
@@ -431,3 +508,26 @@ class AdminSecurityScopingClase5Test(TestCase):
         self.assertEqual(response_add_meas.status_code, 200)
         self.assertContains(response_add_meas, self.dev_norte_1.name)
         self.assertNotContains(response_add_meas, self.dev_sur_1.name)
+
+
+class SeedDataReproducibilityTest(TestCase):
+    def test_seed_is_repeatable_and_includes_an_archived_device(self):
+        call_command("seed_data", stdout=StringIO())
+        self.assertEqual(Organization.objects.filter(
+            legal_name__in=["EcoEnergy Norte SpA", "EcoEnergy Sur SpA"]
+        ).count(), 2)
+        self.assertTrue(Device.objects.filter(
+            serial_number="SN-NTE-ARCH-001", deleted_at__isnull=False
+        ).exists())
+        self.assertEqual(Measurement.objects.count(), 8)
+        for username in (
+            "admin", "admin_norte", "operador_norte", "consulta_norte",
+            "operador_sur", "staff_sin_perfil",
+        ):
+            self.assertTrue(get_user_model().objects.filter(username=username).exists())
+
+        Device.objects.filter(serial_number="SN-NTE-001").update(deleted_at=timezone.now())
+        call_command("seed_data", stdout=StringIO())
+        self.assertEqual(Measurement.objects.count(), 8)
+        self.assertEqual(Device.objects.filter(serial_number="SN-NTE-ARCH-001").count(), 1)
+        self.assertIsNone(Device.objects.get(serial_number="SN-NTE-001").deleted_at)

@@ -94,9 +94,11 @@ class Device(BaseModel):
 
 	def clean(self):
 		if self.zone_id and self.organization_id and self.zone.organization_id != self.organization_id:
-			raise ValidationError("The zone must belong to the same organization as the device.")
-		if self.consumption_kwh < 0:
-			raise ValidationError("Consumption cannot be negative.")
+			raise ValidationError({
+				"zone": "La zona debe pertenecer a la misma organización que el dispositivo."
+			})
+		if self.consumption_kwh is not None and self.consumption_kwh < 0:
+			raise ValidationError({"consumption_kwh": "El consumo no puede ser negativo."})
 		if self.status == self.STATUS_RETIRED:
 			return
 
