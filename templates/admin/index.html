@@ -1,0 +1,285 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static log admin_filters %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* Dashboard Modern Layout */
+    .dashboard-header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #dce7df;
+    }
+    .dashboard-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #172a2a;
+        margin: 0 0 6px 0;
+    }
+    .dashboard-subtitle {
+        color: #6b7f7c;
+        font-size: 0.92rem;
+        margin: 0;
+    }
+    .dashboard-user-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #eef7f2;
+        border: 1px solid #cde5d6;
+        color: #215244;
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 999px;
+        margin-top: 10px;
+    }
+
+    /* Cards & Modules */
+    .app-card {
+        background: #ffffff;
+        border: 1px solid #dce7df;
+        border-radius: 12px;
+        margin-bottom: 22px;
+        overflow: hidden;
+        box-shadow: 0 4px 14px rgba(33, 82, 68, 0.03);
+    }
+    .app-card-header {
+        background: #215244;
+        color: #ffffff;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .app-card-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        margin: 0;
+        color: #ffffff !important;
+        text-decoration: none;
+    }
+
+    .model-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 20px;
+        border-bottom: 1px solid #f0f4f1;
+        transition: background 0.15s ease;
+    }
+    .model-row:last-child {
+        border-bottom: none;
+    }
+    .model-row:hover {
+        background: #f8faf8;
+    }
+    .model-name {
+        font-weight: 600;
+        font-size: 0.92rem;
+        color: #172a2a;
+        text-decoration: none;
+        transition: color 0.15s ease;
+    }
+    .model-name:hover {
+        color: #2f765b;
+    }
+
+    .model-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-action-add {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #215244;
+        background: #eef7f2;
+        border: 1px solid #d4eadc;
+        padding: 4px 10px;
+        border-radius: 6px;
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+    .btn-action-add:hover {
+        background: #215244;
+        color: #ffffff;
+    }
+    .btn-action-change {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #6b7f7c;
+        background: #f4f7f4;
+        border: 1px solid #e1e8e3;
+        padding: 4px 10px;
+        border-radius: 6px;
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+    .btn-action-change:hover {
+        background: #e1e8e3;
+        color: #172a2a;
+    }
+
+    /* Sidebar Recent Actions */
+    .recent-card {
+        background: #ffffff;
+        border: 1px solid #dce7df;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 14px rgba(33, 82, 68, 0.03);
+    }
+    .recent-card-header {
+        background: #2f765b;
+        color: #ffffff;
+        padding: 12px 18px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+    .recent-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    .recent-item {
+        padding: 11px 16px;
+        border-bottom: 1px solid #f0f4f1;
+        font-size: 0.84rem;
+        line-height: 1.45;
+    }
+    .recent-item:last-child {
+        border-bottom: none;
+    }
+    .recent-tag {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 4px;
+        margin-right: 4px;
+        text-transform: uppercase;
+    }
+    .tag-add { background: #e2f3e7; color: #267044; }
+    .tag-change { background: #fff0dc; color: #9a5d1d; }
+    .tag-delete { background: #fdf2f2; color: #9b1c1c; }
+</style>
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1 class="dashboard-title">Panel de Control y Gestión Energética</h1>
+    <p class="dashboard-subtitle">
+        Administración de infraestructura eléctrica, telemetría de consumo y auditoría con aislamiento multi-organización.
+    </p>
+    {% if request.user.profile.organization %}
+        <div class="dashboard-user-badge">
+            🏢 Ámbito Operativo: <strong>{{ request.user.profile.organization.legal_name }}</strong>
+        </div>
+    {% elif request.user.is_superuser %}
+        <div class="dashboard-user-badge" style="background: #e0f2fe; border-color: #bae6fd; color: #0369a1;">
+            🛡️ Perfil: <strong>Superusuario Global (Acceso Total)</strong>
+        </div>
+    {% endif %}
+</div>
+
+<div id="content-main">
+    {% if app_list %}
+        {% for app in app_list %}
+            <div class="app-card">
+                <div class="app-card-header">
+                    <a href="{{ app.app_url }}" class="app-card-title">
+                        {{ app.name }}
+                    </a>
+                    <span style="font-size: 0.78rem; opacity: 0.85;">
+                        {{ app.models|length }} entidades
+                    </span>
+                </div>
+                <div class="app-card-body">
+                    {% for model in app.models %}
+                        <div class="model-row">
+                            {% if model.admin_url %}
+                                <a href="{{ model.admin_url }}" class="model-name">
+                                    {{ model.name }}
+                                </a>
+                            {% else %}
+                                <span class="model-name" style="color: #6b7f7c;">
+                                    {{ model.name }}
+                                </span>
+                            {% endif %}
+
+                            <div class="model-actions">
+                                {% if model.add_url %}
+                                    <a href="{{ model.add_url }}" class="btn-action-add" title="Añadir nuevo registro">
+                                        + Añadir
+                                    </a>
+                                {% endif %}
+                                {% if model.admin_url %}
+                                    <a href="{{ model.admin_url }}" class="btn-action-change" title="Ver y modificar registros">
+                                        Modificar
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No tienes permisos para ver o editar ningún recurso en este panel.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<div id="content-related" style="margin-left: 24px;">
+    <div class="recent-card">
+        <div class="recent-card-header">
+            Acciones Recientes
+        </div>
+        <div style="padding: 6px 0;">
+            {% get_admin_log 10 as admin_log for_user user %}
+            {% if not admin_log %}
+                <p style="padding: 16px; color: #6b7f7c; font-size: 0.88rem; margin: 0; text-align: center;">
+                    No hay acciones recientes registradas.
+                </p>
+            {% else %}
+                <ul class="recent-list">
+                    {% for entry in admin_log %}
+                        <li class="recent-item">
+                            {% if entry.is_addition %}
+                                <span class="recent-tag tag-add">Añadido</span>
+                            {% elif entry.is_change %}
+                                <span class="recent-tag tag-change">Modificado</span>
+                            {% elif entry.is_deletion %}
+                                <span class="recent-tag tag-delete">Eliminado</span>
+                            {% endif %}
+
+                            {% if entry.is_deletion or not entry.get_admin_url %}
+                                <strong>{{ entry.object_repr }}</strong>
+                            {% else %}
+                                <a href="{{ entry.get_admin_url }}" style="color: #215244; font-weight: 600; text-decoration: none;">
+                                    {{ entry.object_repr }}
+                                </a>
+                            {% endif %}
+                            <br>
+                            <span style="color: #6b7f7c; font-size: 0.78rem;">
+                                {% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -20,8 +20,8 @@ class Category(BaseModel):
 
 	class Meta:
 		ordering = ("name",)
-		verbose_name = "category"
-		verbose_name_plural = "categories"
+		verbose_name = "categoría"
+		verbose_name_plural = "categorías"
 
 	def __str__(self):
 		return self.name
@@ -39,8 +39,8 @@ class Zone(BaseModel):
 
 	class Meta:
 		ordering = ("organization__legal_name", "name")
-		verbose_name = "zone"
-		verbose_name_plural = "zones"
+		verbose_name = "zona"
+		verbose_name_plural = "zonas"
 		constraints = [
 			models.UniqueConstraint(
 				fields=("organization", "name"),
@@ -84,8 +84,8 @@ class Device(BaseModel):
 
 	class Meta:
 		ordering = ("name",)
-		verbose_name = "device"
-		verbose_name_plural = "devices"
+		verbose_name = "dispositivo"
+		verbose_name_plural = "dispositivos"
 		indexes = [models.Index(fields=("organization", "status"))]
 
 	def __str__(self):
@@ -112,8 +112,8 @@ class Organization(BaseModel):
 
 	class Meta:
 		ordering = ("legal_name",)
-		verbose_name = "organization"
-		verbose_name_plural = "organizations"
+		verbose_name = "organización"
+		verbose_name_plural = "organizaciones"
 
 	def __str__(self):
 		return self.trade_name or self.legal_name
@@ -138,8 +138,8 @@ class Department(BaseModel):
 
 	class Meta:
 		ordering = ("organization__legal_name", "name")
-		verbose_name = "department"
-		verbose_name_plural = "departments"
+		verbose_name = "departamento"
+		verbose_name_plural = "departamentos"
 		constraints = [
 			models.UniqueConstraint(
 				fields=("organization", "name"),
@@ -180,8 +180,8 @@ class UserProfile(BaseModel):
 	address = models.CharField(max_length=200, blank=True)
 
 	class Meta:
-		verbose_name = "user profile"
-		verbose_name_plural = "user profiles"
+		verbose_name = "perfil de usuario"
+		verbose_name_plural = "perfiles de usuario"
 
 	def __str__(self):
 		return f"{self.user.get_full_name() or self.user.username} · {self.organization}"
@@ -219,8 +219,8 @@ class Measurement(BaseModel):
 
 	class Meta:
 		ordering = ("-measured_at",)
-		verbose_name = "measurement"
-		verbose_name_plural = "measurements"
+		verbose_name = "medición"
+		verbose_name_plural = "mediciones"
 		indexes = [models.Index(fields=("device", "measured_at"))]
 
 	def __str__(self):
@@ -245,6 +245,11 @@ class AlertRule(BaseModel):
 	maximum = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
 	category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="alert_rules")
 	is_active = models.BooleanField(default=True)
+
+	class Meta:
+		ordering = ("name",)
+		verbose_name = "regla de alerta"
+		verbose_name_plural = "reglas de alerta"
 
 	def __str__(self):
 		return self.name
@@ -281,8 +286,8 @@ class AlertEvent(BaseModel):
 	notes = models.TextField(blank=True)
 
 	class Meta:
-		verbose_name = "alert event"
-		verbose_name_plural = "alert events"
+		verbose_name = "evento de alerta"
+		verbose_name_plural = "eventos de alerta"
 
 	def __str__(self):
 		return f"{self.device} · {self.get_status_display()}"
@@ -318,8 +323,8 @@ class MaintenanceRequest(BaseModel):
 	cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
 	class Meta:
-		verbose_name = "maintenance request"
-		verbose_name_plural = "maintenance requests"
+		verbose_name = "solicitud de mantenimiento"
+		verbose_name_plural = "solicitudes de mantenimiento"
 
 	def __str__(self):
 		return f"{self.device} · {self.get_request_type_display()}"

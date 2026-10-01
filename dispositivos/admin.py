@@ -585,3 +585,8 @@ class MaintenanceRequestAdmin(AuditedAdmin):
 
 	def has_delete_permission(self, request, obj=None):
 		return False
+
+
+admin.site.site_header = "EcoEnergy Admin"
+admin.site.site_title = "EcoEnergy Portal"
+admin.site.index_title = "Panel de Control y Gestión Energética"

@@ -4,8 +4,125 @@
 {% block title %}Inicio | EcoEnergy{% endblock %}
 
 {% block content %}
-<h1>{{ sistema }}</h1>
-<p>{{ mensaje }}</p>
-<p>Curso: {{ asignatura }}</p>
-<li class="breadcrumb-item"><a href="{% url 'dispositivos:resumen_zonas' %}" class="text-decoration-none text-dark">Resumen de zonas</a></li>
+<div class="container-fluid px-0">
+    <!-- Hero Banner Sobrio y Moderno -->
+    <div class="card border-0 mb-4 overflow-hidden position-relative" style="background: linear-gradient(135deg, #215244 0%, #2f765b 100%); border-radius: 14px; box-shadow: 0 12px 30px rgba(33, 82, 68, 0.15);">
+        <div class="card-body p-4 p-md-5 text-white position-relative">
+            <div class="d-inline-block px-3 py-1 rounded-pill mb-3" style="background: rgba(220, 238, 226, 0.15); border: 1px solid rgba(220, 238, 226, 0.25); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;">
+                Monitoreo Energético Responsable
+            </div>
+            <h1 class="fw-bold mb-3" style="font-size: clamp(2rem, 3.5vw, 2.75rem); font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.03em;">
+                {{ sistema }}
+            </h1>
+            <p class="lead mb-4" style="max-width: 680px; color: #dceee2; font-size: 1.05rem; line-height: 1.6;">
+                {{ mensaje }}. Plataforma de telemetría de consumo en kWh, supervisión de zonas y aislamiento de datos por organización.
+            </p>
+
+            {% if request.user.is_authenticated %}
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2 mb-4" style="background: rgba(0, 0, 0, 0.18); border: 1px solid rgba(255, 255, 255, 0.12); font-size: 0.88rem;">
+                    <span>Conectado como: <strong>{{ request.user.username }}</strong></span>
+                    <span style="opacity: 0.7;">|</span>
+                    <span>Ámbito: <strong>{{ request.user.profile.organization.legal_name|default:"Administración Global" }}</strong></span>
+                </div>
+            {% endif %}
+
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'dispositivos:catalogo' %}" class="btn px-3 py-2 fw-semibold" style="background: #ffffff; color: #215244; border-radius: 8px; font-size: 0.9rem;">
+                    Ver Dispositivos
+                </a>
+                <a href="{% url 'dispositivos:zonas' %}" class="btn px-3 py-2 fw-semibold" style="background: rgba(255, 255, 255, 0.15); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; font-size: 0.9rem;">
+                    Zonas de Consumo
+                </a>
+                {% if request.user.is_authenticated %}
+                    <a href="{% url 'admin:index' %}" class="btn px-3 py-2 fw-semibold" style="background: #c68139; color: #ffffff; border-radius: 8px; font-size: 0.9rem;">
+                        Panel de Control →
+                    </a>
+                {% else %}
+                    <a href="{% url 'admin:login' %}" class="btn px-3 py-2 fw-semibold" style="background: #c68139; color: #ffffff; border-radius: 8px; font-size: 0.9rem;">
+                        Iniciar Sesión →
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Módulos del Sistema (Diseño Limpio, Sobrio y Minimalista, Sin Emojis) -->
+    <h2 class="fw-bold mb-3" style="font-size: 1.25rem; font-family: 'Space Grotesk', sans-serif; color: #172a2a;">
+        Módulos del Sistema
+    </h2>
+    <div class="row g-3 mb-4">
+        <!-- Tarjeta 1: Catálogo -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 p-4" style="background: #ffffff; border: 1px solid #dfe6e3 !important; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);">
+                <div class="text-uppercase fw-semibold mb-2" style="font-size: 0.75rem; letter-spacing: 0.05em; color: #2f765b;">
+                    Inventario
+                </div>
+                <h3 class="fw-bold h6 mb-2" style="font-family: 'Space Grotesk', sans-serif; color: #172a2a;">
+                    Catálogo de Dispositivos
+                </h3>
+                <p class="text-muted small mb-3 flex-grow-1" style="line-height: 1.5;">
+                    Supervisión de medidores inteligentes, luminarias LED y equipos de climatización con estado operativo y consumo.
+                </p>
+                <a href="{% url 'dispositivos:catalogo' %}" class="small fw-semibold text-decoration-none" style="color: #2f765b;">
+                    Ver catálogo →
+                </a>
+            </div>
+        </div>
+
+        <!-- Tarjeta 2: Zonas -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 p-4" style="background: #ffffff; border: 1px solid #dfe6e3 !important; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);">
+                <div class="text-uppercase fw-semibold mb-2" style="font-size: 0.75rem; letter-spacing: 0.05em; color: #267044;">
+                    Telemetría
+                </div>
+                <h3 class="fw-bold h6 mb-2" style="font-family: 'Space Grotesk', sans-serif; color: #172a2a;">
+                    Zonas de Consumo
+                </h3>
+                <p class="text-muted small mb-3 flex-grow-1" style="line-height: 1.5;">
+                    Control de límites de consumo por área geográfica, cálculo acumulado en kWh y estados de advertencia.
+                </p>
+                <a href="{% url 'dispositivos:zonas' %}" class="small fw-semibold text-decoration-none" style="color: #2f765b;">
+                    Ver zonas →
+                </a>
+            </div>
+        </div>
+
+        <!-- Tarjeta 3: Panel Admin -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 p-4" style="background: #ffffff; border: 1px solid #dfe6e3 !important; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);">
+                <div class="text-uppercase fw-semibold mb-2" style="font-size: 0.75rem; letter-spacing: 0.05em; color: #9a5d1d;">
+                    Gestión
+                </div>
+                <h3 class="fw-bold h6 mb-2" style="font-family: 'Space Grotesk', sans-serif; color: #172a2a;">
+                    Panel de Administración
+                </h3>
+                <p class="text-muted small mb-3 flex-grow-1" style="line-height: 1.5;">
+                    Administración con permisos por rol, auditoría automática, acciones de borrado lógico y scoping por organización.
+                </p>
+                <a href="{% url 'admin:index' %}" class="small fw-semibold text-decoration-none" style="color: #c68139;">
+                    Acceder al panel →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Créditos e Integrantes -->
+    <div class="card border-0 p-3 mb-2" style="background: #ffffff; border: 1px solid #dfe6e3 !important; border-radius: 10px;">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <div class="fw-semibold text-dark small" style="letter-spacing: 0.02em;">
+                    Programación Back End · Evaluación Sumativa 2
+                </div>
+                <div class="text-muted" style="font-size: 0.82rem; margin-top: 2px;">
+                    Integrantes: <strong>Keoni Vergara</strong> · <strong>Marcos Ortiz</strong> · <strong>Harold Concha</strong> · <strong>Claudio Romo</strong>
+                </div>
+            </div>
+            <div>
+                <a href="{% url 'dispositivos:resumen_zonas' %}" class="small fw-semibold text-decoration-none" style="color: #2f765b;">
+                    Resumen consolidado de zonas →
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
