@@ -152,4 +152,3 @@ python manage.py test dispositivos
 3. Para mostrar la validación, entrar como `admin`, abrir **Devices → Add device**, elegir **EcoEnergy Norte** como organización y una zona de **EcoEnergy Sur**; completar los demás campos y pulsar **Save**. El formulario marca **Zone** con el mensaje «La zona debe pertenecer a la misma organización que el dispositivo». También se puede probar en **User profiles** asignando a un perfil de Norte un departamento de Sur.
 4. Para evidenciar el borrado lógico precargado, entrar como `admin` y buscar `SN-NTE-ARCH-001` en **Devices**; su campo `deleted_at` contiene la fecha de archivo. Como `operador_norte` o `consulta_norte`, la lista solo muestra datos propios y activos.
 
-Para el informe, capturar la vista de la organización con el Inline, la lista de dispositivos inmediatamente después de archivar con el mensaje de éxito y el formulario de dispositivo con el error de zona visible.
