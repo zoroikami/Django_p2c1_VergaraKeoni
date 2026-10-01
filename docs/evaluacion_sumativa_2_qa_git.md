@@ -69,4 +69,7 @@ El repositorio también mantiene estas exclusiones mediante .gitignore.
 
 ## 5. Hash de versión evaluada
 
-El hash definitivo de main se registrará una vez que todas las ramas de trabajo y documentación hayan sido integradas.
+- **Commit SHA completo:** `dc1af6ca688be5f96aa50085a676c8c6f6bfcae3`
+- **Commit SHA corto:** `dc1af6c`
+- **Rama:** `main`
+- **Repositorio:** `https://github.com/zoroikami/Django_p2c1_VergaraKeoni`
