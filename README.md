@@ -63,6 +63,11 @@ python manage.py seed_data
 python manage.py runserver
 ```
 
+En desarrollo, `runserver` activa `DEBUG` por defecto si `DJANGO_DEBUG` no está definido, para que
+los estilos y scripts del panel de administración se sirvan correctamente.
+`DJANGO_DEBUG=false` lo desactiva de forma explícita; fuera de `runserver`, el
+valor predeterminado sigue siendo `false`.
+
 `seed_data` puede ejecutarse varias veces: actualiza los datos de demostración sin duplicar las ocho mediciones y vuelve a dejar activos los ocho dispositivos de la demo. Agrega **EcoEnergy Norte** y **EcoEnergy Sur**, cuatro zonas, tres categorías, un dispositivo archivado (`SN-NTE-ARCH-001`), departamentos y las cuentas indicadas abajo. Una migración histórica también puede conservar la organización técnica `Legacy EcoEnergy Organization`; no forma parte de la demo. La base SQLite se genera localmente y no se versiona.
 
 ---

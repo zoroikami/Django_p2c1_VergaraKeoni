@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 
 from dotenv import load_dotenv
 
@@ -27,7 +28,11 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-local-development-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
+# El servidor local debe servir los archivos estáticos del Admin sin requerir .env.
+# Fuera de runserver, DEBUG permanece desactivado salvo configuración explícita.
+DEBUG = os.getenv(
+    "DJANGO_DEBUG", "true" if "runserver" in sys.argv else "false"
+).lower() == "true"
 
 ALLOWED_HOSTS = ['*']
 
