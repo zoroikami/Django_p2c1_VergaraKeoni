@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión - EcoEnergy{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center pt-4 pb-5">
+    <div class="col-12 col-md-8 col-lg-5">
+        <div class="card panel-card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-body p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2 fw-semibold mb-2">
+                        Acceso Seguro
+                    </span>
+                    <h2 class="fw-bold mb-1">Ingreso al Sistema</h2>
+                    <p class="text-muted small">Ingresa tus credenciales para administrar tus dispositivos</p>
+                </div>
+
+                {% if form.errors %}
+                <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 rounded-3 mb-4" role="alert">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-exclamation-triangle-fill flex-shrink-0" viewBox="0 0 16 16">
+                        <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                    </svg>
+                    <div>Usuario o contraseña incorrectos.</div>
+                </div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label fw-semibold text-secondary small">Nombre de Usuario</label>
+                        <input type="text" name="username" autofocus autocapitalize="none" autocomplete="username" maxlength="150" required id="id_username" class="form-control form-control-lg rounded-3 fs-6" placeholder="ej: operador_norte">
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="id_password" class="form-label fw-semibold text-secondary small mb-0">Contraseña</label>
+                            <a href="{% url 'dispositivos:password_reset_request' %}" class="small text-decoration-none text-success fw-semibold">
+                                ¿Olvidaste tu contraseña?
+                            </a>
+                        </div>
+                        <input type="password" name="password" autocomplete="current-password" required id="id_password" class="form-control form-control-lg rounded-3 fs-6" placeholder="••••••••">
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 py-2 fs-6 fw-semibold rounded-3 shadow-sm mb-3">
+                        Iniciar Sesión
+                    </button>
+
+                    <input type="hidden" name="next" value="{{ next|default:'' }}">
+                </form>
+
+                <div class="text-center pt-2 border-top mt-4">
+                    <p class="text-muted small mb-0">
+                        ¿Problemas para acceder? Contacta a tu <span class="fw-semibold">Administrador Organizacional</span>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

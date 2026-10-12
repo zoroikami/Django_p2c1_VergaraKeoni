@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Acceso Denegado (403) - EcoEnergy{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center pt-5 pb-5">
+    <div class="col-12 col-md-8 col-lg-6 text-center">
+        <div class="card panel-card border-0 shadow-sm rounded-4 p-4 p-md-5">
+            <div class="mb-4">
+                <span class="badge rounded-pill bg-danger-subtle text-danger px-3 py-2 fw-semibold fs-6">
+                    Error 403 · Prohibido
+                </span>
+            </div>
+            <h1 class="display-6 fw-bold mb-3 text-dark">Acceso No Autorizado</h1>
+            <p class="text-secondary mb-4 fs-6">
+                Tu cuenta está autenticada en el sistema, pero <strong>no posees los permisos requeridos</strong> o el recurso solicitado no pertenece a tu organización.
+            </p>
+            <div class="alert alert-light border rounded-3 p-3 mb-4 text-start small text-muted">
+                <strong>Principios de Seguridad y Scoping (Clase 7):</strong><br>
+                • La operación solicitada requiere permisos granulares específicos otorgados a tu rol.<br>
+                • El acceso está restringido estrictamente al ámbito organizacional asignado a tu perfil.<br>
+                • Contacta al Administrador de tu organización si requieres acceso a este recurso.
+            </div>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{% url 'dispositivos:catalogo' %}" class="btn btn-success px-4 py-2 rounded-3 fw-semibold shadow-sm">
+                    Volver a Dispositivos
+                </a>
+                <a href="{% url 'dispositivos:inicio' %}" class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-semibold">
+                    Ir al Inicio
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

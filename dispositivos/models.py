@@ -1,7 +1,9 @@
 from django.conf import settings
+from django.contrib.auth.hashers import make_password, check_password
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 
 class BaseModel(models.Model):
@@ -334,3 +336,44 @@ class MaintenanceRequest(BaseModel):
 			raise ValidationError("The maintenance organization must match the device organization.")
 		if self.status == self.CLOSED and (not self.completed_at or not self.result):
 			raise ValidationError("Closed maintenance requires completion date and result.")
+
+
+class PasswordResetCode(BaseModel):
+	"""
+	Modelo para la gestión de códigos temporales de recuperación de contraseña (Clase 6 Desafío).
+	Almacena únicamente el hash seguro del código numérico de 6 dígitos con control de vigencia,
+	un solo uso e intentos fallidos.
+	"""
+	user = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name="password_reset_codes",
+	)
+	code_hash = models.CharField(max_length=255)
+	expires_at = models.DateTimeField()
+	is_used = models.BooleanField(default=False)
+	used_at = models.DateTimeField(null=True, blank=True)
+	failed_attempts = models.PositiveSmallIntegerField(default=0)
+
+	class Meta:
+		ordering = ("-created_at",)
+		verbose_name = "código de recuperación"
+		verbose_name_plural = "códigos de recuperación"
+		indexes = [
+			models.Index(fields=("user", "is_used", "expires_at")),
+		]
+
+	def __str__(self):
+		return f"Reset code for {self.user.username} (exp: {self.expires_at:%Y-%m-%d %H:%M:%S})"
+
+	def is_expired(self):
+		return timezone.now() >= self.expires_at
+
+	def is_blocked(self, max_attempts=5):
+		return self.failed_attempts >= max_attempts
+
+	def check_code(self, raw_code):
+		"""Verifica si el código en texto plano coincide con el hash almacenado."""
+		if not raw_code:
+			return False
+		return check_password(str(raw_code).strip(), self.code_hash)

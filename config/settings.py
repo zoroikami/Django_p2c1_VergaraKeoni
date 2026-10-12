@@ -138,11 +138,37 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# Email Configuration (Clase 6)
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "sandbox.smtp.mailtrap.io")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "2525"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "t")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@ecoenergy.local")
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
+# Flujo de autenticación (Clase 6)
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "dispositivos:catalogo"
+LOGOUT_REDIRECT_URL = "login"
+
+# Message Framework tags adaptados a Bootstrap 5 (Clase 6)
+from django.contrib.messages import constants as msg
+MESSAGE_TAGS = {
+    msg.DEBUG: "secondary",
+    msg.INFO: "info",
+    msg.SUCCESS: "success",
+    msg.WARNING: "warning",
+    msg.ERROR: "danger",
 }
+
+# Configuración de recuperación de contraseña con código temporal (Clase 6 Desafío)
+PASSWORD_RESET_CODE_TTL_SECONDS = int(os.getenv("PASSWORD_RESET_CODE_TTL_SECONDS", "120"))
+PASSWORD_RESET_MAX_ATTEMPTS = int(os.getenv("PASSWORD_RESET_MAX_ATTEMPTS", "5"))
+
+# Optimización para ejecución de suite de pruebas
+import sys
+if "test" in sys.argv:
+    PASSWORD_HASHERS = [
+        "django.contrib.auth.hashers.MD5PasswordHasher",
+    ]
