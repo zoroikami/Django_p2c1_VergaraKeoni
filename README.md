@@ -121,16 +121,43 @@ Django_p2c1_VergaraKeoni/
 
 ---
 
-## 📌 Estado Actual del Proyecto (Unidad 2 Completa)
+## 📌 Estado Actual del Proyecto (Unidad 2 Completa - Clases 1 a 8)
 
-El proyecto cuenta con la implementación completa de las 5 clases de la **Unidad 2**:
+El proyecto cuenta con la implementación completa de las **8 clases de la Unidad 2**:
 - **Clase 1 (Modelo de Datos y Arquitectura):** Modelos de negocio con `BaseModel` abstracto (`created_at`, `updated_at`, `deleted_at`) y diseño modular.
 - **Clase 2 (Modelos y Migraciones):** Soporte multi-motor (SQLite/MySQL) vía `.env`, constraints de unicidad, índices y migraciones aplicadas.
 - **Clase 3 (Django Admin Básico):** Administración con `list_display`, `search_fields` cruzando relaciones, `list_filter`, `list_select_related`, `date_hierarchy` y representaciones `__str__` legibles.
 - **Clase 4 (Usuarios, Perfiles y Roles):** Integración `User + UserProfile` con validación organizacional en `clean()`, y roles con grupos (`Administrador Organizacional`, `Operador`, `Consulta`) bajo el principio de menor privilegio.
 - **Clase 5 (Seguridad en Admin y Scoping):** Aislamiento multi-tenant con `get_queryset` acotado por organización, exclusión de borrado lógico, `formfield_for_foreignkey` restrictivo, auto-asignación en `save_model`, permisos por objeto (`has_change_permission`), acción de archivado y `DepartmentInline`.
+- **Clase 6 (Autenticación, Sesiones y Recuperación):**
+  - Autenticación de usuario final con `LoginView`, logout seguro vía POST con CSRF y navegación condicional en `base.html`.
+  - Integración del framework de mensajes adaptado a Bootstrap 5 (`alert-{{ message.tags }}`).
+  - Manejo de estado temporal en `request.session` (conteo de visitas en sesión).
+  - **Desafío de Recuperación de Contraseña:** Generación segura con `secrets` de códigos de 6 dígitos numéricos, almacenamiento hasheado (`make_password`), vigencia de 120 segundos, control de un solo uso, límite de 5 intentos fallidos y entrega por correo (Consola / Mailtrap).
+- **Clase 7 (Autorización en Vistas, Grupos y 403):**
+  - Protección granular en vistas mediante `LoginRequiredMixin` y `PermissionRequiredMixin`.
+  - Redirección de visitantes anónimos al login (HTTP 302) y denegación con **HTTP 403 Forbidden** a usuarios autenticados sin permiso.
+  - Manejador global `handler403` y plantilla personalizada `templates/403.html`.
+  - Scoping de QuerySets y respuesta HTTP 404 para recursos fuera de la organización del usuario.
+  - Adaptación de interfaces y botones condicionales mediante `perms`.
+- **Clase 8 (CRUD Protegido con ModelForm, Modal y SweetAlert2):**
+  - Vistas Basadas en Clases (`DeviceListView`, `DeviceCreateView`, `DeviceUpdateView`, `DeviceDeleteView`).
+  - Reutilización de `DeviceForm` (`clean_name()`, unicidad case-insensitive, scoping en selectores de zona/categoría).
+  - Modal Bootstrap 5 reutilizable para Crear y Editar (`_device_form_modal.html`) con persistencia de errores y reapertura automática (`open_modal=True`).
+  - Confirmación interactiva de borrado mediante SweetAlert2 disparando formulario POST con CSRF.
+  - Borrado lógico auditado marcando `deleted_at` sin pérdida física de registros.
 
-Panel de Administración: `http://127.0.0.1:8000/admin/`
+---
+
+### 🌐 Rutas Principales de la Aplicación
+* **Inicio:** `http://127.0.0.1:8000/`
+* **Catálogo y CRUD de Dispositivos:** `http://127.0.0.1:8000/dispositivos/`
+* **Nuevo Dispositivo (Modal):** `http://127.0.0.1:8000/dispositivos/new/`
+* **Iniciar Sesión:** `http://127.0.0.1:8000/accounts/login/`
+* **Recuperar Contraseña:** `http://127.0.0.1:8000/password-reset/`
+* **Panel de Administración:** `http://127.0.0.1:8000/admin/`
+
+---
 
 ### 👥 Usuarios de Demostración y Pruebas
 | Usuario | Rol | Contraseña | Organización |
@@ -144,16 +171,19 @@ Panel de Administración: `http://127.0.0.1:8000/admin/`
 | `consulta_sur` | Consulta (Sólo Lectura) | `Password123!` | EcoEnergy Sur SpA |
 | `staff_sin_perfil` | Staff sin perfil | `Password123!` | Denegación segura (sin datos) |
 
+---
+
 ## 🧪 Ejecución de Pruebas Automatizadas
+
+La suite incluye **50 pruebas automatizadas** que cubren modelos, admin, autenticación, sesiones, los 7 escenarios de recuperación de clave, permisos en vistas y el CRUD completo:
 
 ```bash
 python manage.py test dispositivos
 ```
 
-## Demostración de Admin Pro
-
-1. Ingresar como `admin_norte`. En **Organizations**, abrir **EcoEnergy Norte**. La tabla **Departments** permite agregar o editar departamentos en el mismo formulario; guardar con **Save**. El rol Administrador Organizacional puede cambiar solo su propia organización.
-2. Como `admin_norte`, abrir **Devices**, seleccionar un dispositivo activo de Norte y ejecutar **Archivar dispositivos seleccionados**. Aparece un mensaje con la cantidad archivada. El registro conserva su fila en la base con `deleted_at` y deja de aparecer en la lista de ese usuario. La eliminación física está deshabilitada en el Admin.
-3. Para mostrar la validación, entrar como `admin`, abrir **Devices → Add device**, elegir **EcoEnergy Norte** como organización y una zona de **EcoEnergy Sur**; completar los demás campos y pulsar **Save**. El formulario marca **Zone** con el mensaje «La zona debe pertenecer a la misma organización que el dispositivo». También se puede probar en **User profiles** asignando a un perfil de Norte un departamento de Sur.
-4. Para evidenciar el borrado lógico precargado, entrar como `admin` y buscar `SN-NTE-ARCH-001` en **Devices**; su campo `deleted_at` contiene la fecha de archivo. Como `operador_norte` o `consulta_norte`, la lista solo muestra datos propios y activos.
+Resultado esperado:
+```text
+Ran 50 tests in ~1.6s
+OK
+```
 

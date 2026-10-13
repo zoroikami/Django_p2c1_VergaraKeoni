@@ -25,9 +25,13 @@ from .models import (
     MaintenanceRequest,
     Measurement,
     Organization,
+    PasswordResetCode,
     UserProfile,
     Zone,
 )
+from datetime import timedelta
+from django.core import mail
+from django.contrib.auth.hashers import make_password
 from .roles import (
     ROLE_ADMIN_ORG,
     ROLE_CONSULTA,
@@ -131,6 +135,9 @@ class DomainRulesTest(TestCase):
 
     def test_authenticated_user_only_sees_own_organization(self):
         user = get_user_model().objects.create_user(username="operator", password="test-pass")
+        perm = Permission.objects.filter(codename="view_device").first()
+        if perm:
+            user.user_permissions.add(perm)
         UserProfile.objects.create(user=user, organization=self.organization)
         Device.objects.create(
             organization=self.organization,
@@ -531,3 +538,372 @@ class SeedDataReproducibilityTest(TestCase):
         self.assertEqual(Measurement.objects.count(), 8)
         self.assertEqual(Device.objects.filter(serial_number="SN-NTE-ARCH-001").count(), 1)
         self.assertIsNone(Device.objects.get(serial_number="SN-NTE-001").deleted_at)
+
+
+# ==============================================================================
+# PRUEBAS CLASE 6: Autenticación, Sesiones y Mensajes
+# ==============================================================================
+
+class Clase6AuthAndSessionsTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_data", stdout=StringIO())
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.get(username="admin_norte")
+
+    def test_login_page_renders_with_csrf(self):
+        response = self.client.get(reverse("login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ingreso al Sistema")
+        self.assertContains(response, "csrfmiddlewaretoken")
+
+    def test_login_valid_credentials_redirects(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "admin_norte", "password": "Password123!"},
+        )
+        self.assertRedirects(response, reverse("dispositivos:catalogo"))
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_login_invalid_credentials_shows_controlled_error(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "admin_norte", "password": "ClaveIncorrecta!"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Usuario o contraseña incorrectos.")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_anonymous_user_redirected_from_protected_view(self):
+        response = self.client.get(reverse("dispositivos:catalogo"))
+        expected_url = f"{reverse('login')}?next={reverse('dispositivos:catalogo')}"
+        self.assertRedirects(response, expected_url)
+
+    def test_session_tracks_visits(self):
+        res1 = self.client.get(reverse("dispositivos:inicio"))
+        self.assertEqual(res1.status_code, 200)
+        self.assertEqual(self.client.session.get("inicio_visits"), 1)
+
+        res2 = self.client.get(reverse("dispositivos:inicio"))
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(self.client.session.get("inicio_visits"), 2)
+
+    def test_logout_post_invalidates_session(self):
+        self.client.login(username="operador_norte", password="Password123!")
+        res_cat = self.client.get(reverse("dispositivos:catalogo"))
+        self.assertEqual(res_cat.status_code, 200)
+
+        # Logout via POST
+        res_logout = self.client.post(reverse("logout"))
+        self.assertRedirects(res_logout, reverse("login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+        # Volver a URL protegida redirige a login
+        res_after = self.client.get(reverse("dispositivos:catalogo"))
+        self.assertEqual(res_after.status_code, 302)
+
+
+# ==============================================================================
+# PRUEBAS CLASE 6 DESAFÍO: Recuperación de Contraseña con Código Temporal
+# ==============================================================================
+
+class Clase6PasswordResetTemporalCodeTest(TestCase):
+    def setUp(self):
+        call_command("seed_data", stdout=StringIO())
+        self.User = get_user_model()
+        self.user = self.User.objects.get(username="operador_norte")
+        self.email = self.user.email
+        mail.outbox.clear()
+
+    def test_caso1_codigo_correcto_antes_de_120s_permite_continuar(self):
+        # Solicitar código
+        res_req = self.client.post(
+            reverse("dispositivos:password_reset_request"),
+            {"email": self.email},
+        )
+        self.assertRedirects(res_req, reverse("dispositivos:password_reset_verify"))
+        self.assertEqual(len(mail.outbox), 1)
+
+        code_obj = PasswordResetCode.objects.filter(user=self.user, is_used=False).first()
+        self.assertIsNotNone(code_obj)
+        self.assertFalse(code_obj.is_expired())
+
+        # Forzar un código conocido para verificar
+        code_obj.code_hash = make_password("654321")
+        code_obj.save()
+
+        # Validar código
+        res_verify = self.client.post(
+            reverse("dispositivos:password_reset_verify"),
+            {"code": "654321"},
+        )
+        self.assertRedirects(res_verify, reverse("dispositivos:password_reset_confirm"))
+
+    def test_caso2_codigo_incorrecto_incrementa_intentos_y_rechaza(self):
+        self.client.post(
+            reverse("dispositivos:password_reset_request"),
+            {"email": self.email},
+        )
+        code_obj = PasswordResetCode.objects.filter(user=self.user, is_used=False).first()
+        code_obj.code_hash = make_password("111222")
+        code_obj.save()
+
+        res_wrong = self.client.post(
+            reverse("dispositivos:password_reset_verify"),
+            {"code": "999999"},
+        )
+        self.assertEqual(res_wrong.status_code, 200)
+        self.assertContains(res_wrong, "Código incorrecto")
+        code_obj.refresh_from_db()
+        self.assertEqual(code_obj.failed_attempts, 1)
+
+    def test_caso3_codigo_despues_de_120s_rechaza_por_expiracion(self):
+        self.client.post(
+            reverse("dispositivos:password_reset_request"),
+            {"email": self.email},
+        )
+        code_obj = PasswordResetCode.objects.filter(user=self.user, is_used=False).first()
+        code_obj.code_hash = make_password("123456")
+        code_obj.expires_at = timezone.now() - timedelta(seconds=10)
+        code_obj.save()
+
+        res_expired = self.client.post(
+            reverse("dispositivos:password_reset_verify"),
+            {"code": "123456"},
+        )
+        self.assertEqual(res_expired.status_code, 200)
+        self.assertContains(res_expired, "El código ha expirado")
+
+    def test_caso4_codigo_ya_utilizado_no_permite_reutilizar(self):
+        self.client.post(
+            reverse("dispositivos:password_reset_request"),
+            {"email": self.email},
+        )
+        code_obj = PasswordResetCode.objects.filter(user=self.user, is_used=False).first()
+        code_obj.code_hash = make_password("123456")
+        code_obj.is_used = True
+        code_obj.save()
+
+        res_used = self.client.post(
+            reverse("dispositivos:password_reset_verify"),
+            {"code": "123456"},
+        )
+        self.assertEqual(res_used.status_code, 200)
+        self.assertContains(res_used, "No existe una solicitud de recuperación vigente")
+
+    def test_caso5_solicitud_nuevo_codigo_invalida_anterior(self):
+        # Primera solicitud
+        self.client.post(reverse("dispositivos:password_reset_request"), {"email": self.email})
+        code1 = PasswordResetCode.objects.filter(user=self.user).latest("created_at")
+
+        # Segunda solicitud
+        self.client.post(reverse("dispositivos:password_reset_request"), {"email": self.email})
+        code1.refresh_from_db()
+        self.assertTrue(code1.is_used)
+
+        code2 = PasswordResetCode.objects.filter(user=self.user).latest("created_at")
+        self.assertNotEqual(code1.pk, code2.pk)
+        self.assertFalse(code2.is_used)
+
+    def test_caso6_correo_inexistente_respuesta_generica(self):
+        res = self.client.post(
+            reverse("dispositivos:password_reset_request"),
+            {"email": "no_existe_en_bd@ejemplo.com"},
+        )
+        self.assertRedirects(res, reverse("dispositivos:password_reset_verify"))
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_caso7_nueva_contrasena_correcta_actualiza_y_permite_login(self):
+        # 1. Request
+        self.client.post(reverse("dispositivos:password_reset_request"), {"email": self.email})
+        code_obj = PasswordResetCode.objects.filter(user=self.user, is_used=False).first()
+        code_obj.code_hash = make_password("789123")
+        code_obj.save()
+
+        # 2. Verify
+        self.client.post(reverse("dispositivos:password_reset_verify"), {"code": "789123"})
+
+        # 3. Confirm
+        nueva_clave = "NuevaSuperClave2026!"
+        res_confirm = self.client.post(
+            reverse("dispositivos:password_reset_confirm"),
+            {
+                "new_password": nueva_clave,
+                "confirm_password": nueva_clave,
+            },
+        )
+        self.assertRedirects(res_confirm, reverse("login"))
+
+        code_obj.refresh_from_db()
+        self.assertTrue(code_obj.is_used)
+        self.assertIsNotNone(code_obj.used_at)
+
+        # 4. Probar login con nueva clave
+        res_login_nuevo = self.client.post(
+            reverse("login"),
+            {"username": self.user.username, "password": nueva_clave},
+        )
+        self.assertRedirects(res_login_nuevo, reverse("dispositivos:catalogo"))
+
+        # 5. Probar que clave antigua ya no funciona
+        self.client.logout()
+        res_login_viejo = self.client.post(
+            reverse("login"),
+            {"username": self.user.username, "password": "Password123!"},
+        )
+        self.assertEqual(res_login_viejo.status_code, 200)
+        self.assertContains(res_login_viejo, "Usuario o contraseña incorrectos.")
+
+
+# ==============================================================================
+# PRUEBAS CLASE 7: Permisos en Vistas, Grupos, Scoping y Error 403
+# ==============================================================================
+
+class Clase7PermissionsAndScopingViewsTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_data", stdout=StringIO())
+        cls.User = get_user_model()
+        cls.admin_norte = cls.User.objects.get(username="admin_norte")
+        cls.operador_norte = cls.User.objects.get(username="operador_norte")
+        cls.consulta_norte = cls.User.objects.get(username="consulta_norte")
+        cls.dev_norte = Device.objects.filter(organization__trade_name="EcoEnergy Norte").first()
+        cls.dev_sur = Device.objects.filter(organization__trade_name="EcoEnergy Sur").first()
+
+    def test_consulta_can_view_device_list(self):
+        self.client.login(username="consulta_norte", password="Password123!")
+        res = self.client.get(reverse("dispositivos:catalogo"))
+        self.assertEqual(res.status_code, 200)
+
+    def test_consulta_denied_403_on_create_device(self):
+        self.client.login(username="consulta_norte", password="Password123!")
+        res = self.client.get(reverse("dispositivos:device_create"))
+        self.assertEqual(res.status_code, 403)
+        self.assertTemplateUsed(res, "403.html")
+
+    def test_consulta_denied_403_on_update_device(self):
+        self.client.login(username="consulta_norte", password="Password123!")
+        res = self.client.get(reverse("dispositivos:device_update", args=[self.dev_norte.pk]))
+        self.assertEqual(res.status_code, 403)
+        self.assertTemplateUsed(res, "403.html")
+
+    def test_user_without_delete_perm_denied_403_on_delete(self):
+        # admin_norte posee add y change, pero no delete
+        self.client.login(username="admin_norte", password="Password123!")
+        res = self.client.post(reverse("dispositivos:device_delete", args=[self.dev_norte.pk]))
+        self.assertEqual(res.status_code, 403)
+        self.assertTemplateUsed(res, "403.html")
+
+    def test_scoping_cross_organization_returns_404(self):
+        # admin_norte tiene change_device, pero no puede acceder a un dispositivo de EcoEnergy Sur
+        self.client.login(username="admin_norte", password="Password123!")
+        res = self.client.get(reverse("dispositivos:device_update", args=[self.dev_sur.pk]))
+        self.assertEqual(res.status_code, 404)
+
+
+# ==============================================================================
+# PRUEBAS CLASE 8: CRUD Completo Protegido, ModelForm, Modal y SweetAlert2
+# ==============================================================================
+
+class Clase8ProtectedCrudModelFormAndSwalTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_data", stdout=StringIO())
+        cls.User = get_user_model()
+        cls.admin_norte = cls.User.objects.get(username="admin_norte")
+        cls.org_norte = Organization.objects.get(trade_name="EcoEnergy Norte")
+        cls.zone_norte = Zone.objects.filter(organization=cls.org_norte).first()
+        cls.cat = Category.objects.first()
+
+    def test_list_view_scoped_to_organization(self):
+        self.client.login(username="admin_norte", password="Password123!")
+        res = self.client.get(reverse("dispositivos:catalogo"))
+        self.assertEqual(res.status_code, 200)
+        # Todos los dispositivos en el contexto deben pertenecer a EcoEnergy Norte
+        for dev in res.context["dispositivos"]:
+            self.assertEqual(dev.organization_id, self.org_norte.pk)
+
+    def test_create_view_valid_form(self):
+        self.client.login(username="admin_norte", password="Password123!")
+        payload = {
+            "name": "Sensor Clima Servidores Norte",
+            "serial_number": "SN-NTE-NEW-888",
+            "organization": self.org_norte.pk,
+            "category": self.cat.pk,
+            "zone": self.zone_norte.pk,
+            "status": "active",
+            "consumption_kwh": "18.50",
+        }
+        res = self.client.post(reverse("dispositivos:device_create"), payload)
+        self.assertRedirects(res, reverse("dispositivos:catalogo"))
+
+        dev = Device.objects.get(serial_number="SN-NTE-NEW-888")
+        self.assertEqual(dev.organization, self.org_norte)
+        self.assertEqual(dev.name, "Sensor Clima Servidores Norte")
+
+    def test_create_view_invalid_form_reopens_modal(self):
+        self.client.login(username="admin_norte", password="Password123!")
+        # Nombre menor a 3 caracteres viola clean_name()
+        payload = {
+            "name": "AB",
+            "serial_number": "SN-FAIL-001",
+            "category": self.cat.pk,
+            "zone": self.zone_norte.pk,
+            "status": "active",
+            "consumption_kwh": "10.00",
+        }
+        res = self.client.post(reverse("dispositivos:device_create"), payload)
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.context.get("open_modal"))
+        self.assertFormError(res.context["form"], "name", "El nombre debe tener al menos 3 caracteres.")
+
+    def test_clean_name_duplicate_rejected(self):
+        self.client.login(username="admin_norte", password="Password123!")
+        existing_name = Device.objects.filter(organization=self.org_norte).first().name
+        payload = {
+            "name": existing_name.lower(),  # Comprobar unicidad case-insensitive
+            "serial_number": "SN-DUP-001",
+            "category": self.cat.pk,
+            "zone": self.zone_norte.pk,
+            "status": "active",
+            "consumption_kwh": "10.00",
+        }
+        res = self.client.post(reverse("dispositivos:device_create"), payload)
+        self.assertEqual(res.status_code, 200)
+        self.assertFormError(res.context["form"], "name", "Ya existe un dispositivo con este nombre en la organización.")
+
+    def test_update_view_valid(self):
+        self.client.login(username="admin_norte", password="Password123!")
+        dev = Device.objects.filter(organization=self.org_norte).first()
+        payload = {
+            "name": "Medidor Principal Norte Renombrado",
+            "serial_number": dev.serial_number,
+            "organization": self.org_norte.pk,
+            "category": dev.category_id,
+            "zone": dev.zone_id,
+            "status": "active",
+            "consumption_kwh": "25.00",
+        }
+        res = self.client.post(reverse("dispositivos:device_update", args=[dev.pk]), payload)
+        self.assertRedirects(res, reverse("dispositivos:catalogo"))
+
+        dev.refresh_from_db()
+        self.assertEqual(dev.name, "Medidor Principal Norte Renombrado")
+
+    def test_delete_view_soft_delete(self):
+        # Superusuario posee todos los permisos, incluyendo delete_device
+        self.client.login(username="admin", password="Admin123!")
+        dev = Device.objects.filter(organization=self.org_norte, deleted_at__isnull=True).first()
+        dev_pk = dev.pk
+
+        res = self.client.post(reverse("dispositivos:device_delete", args=[dev_pk]))
+        self.assertRedirects(res, reverse("dispositivos:catalogo"))
+
+        # Borrado lógico: sigue en la base de datos con deleted_at asignado
+        dev.refresh_from_db()
+        self.assertIsNotNone(dev.deleted_at)
+
+        # Ya no debe aparecer en el listado activo
+        res_list = self.client.get(reverse("dispositivos:catalogo"))
+        pks_in_list = [d.pk for d in res_list.context["dispositivos"]]
+        self.assertNotIn(dev_pk, pks_in_list)

@@ -13,6 +13,7 @@ from .models import (
 	MaintenanceRequest,
 	Measurement,
 	Organization,
+	PasswordResetCode,
 	UserProfile,
 	Zone,
 )
@@ -586,6 +587,26 @@ class MaintenanceRequestAdmin(AuditedAdmin):
 		return check_scoped_object_permission(request.user, obj)
 
 	def has_delete_permission(self, request, obj=None):
+		return False
+
+
+@admin.register(PasswordResetCode)
+class PasswordResetCodeAdmin(admin.ModelAdmin):
+	list_display = ("user", "expires_at", "is_used", "failed_attempts", "created_at")
+	list_filter = ("is_used", "created_at")
+	search_fields = ("user__username", "user__email")
+	readonly_fields = (
+		"user",
+		"code_hash",
+		"expires_at",
+		"is_used",
+		"used_at",
+		"failed_attempts",
+		"created_at",
+		"updated_at",
+	)
+
+	def has_add_permission(self, request):
 		return False
 
 

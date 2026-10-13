@@ -6,3 +6,6 @@ __pycache__/
 .venv/
 /clases
 .env
+asistente_virtual/.env
+asistente_virtual/capturas/
+scratch/
