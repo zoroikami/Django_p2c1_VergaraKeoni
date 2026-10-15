@@ -1,5 +1,6 @@
 asgiref==3.12.1
 Django==6.1
+Pillow==12.3.0
 django-bootstrap5==26.2
 python-dotenv==1.1.1
 sqlparse==0.6.0

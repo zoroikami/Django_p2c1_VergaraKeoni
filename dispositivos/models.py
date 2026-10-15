@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -83,6 +84,12 @@ class Device(BaseModel):
 	)
 	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
 	consumption_kwh = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+	image = models.ImageField(upload_to="devices/images/%Y/%m/", blank=True)
+	manual = models.FileField(
+		upload_to="devices/manuals/%Y/%m/",
+		blank=True,
+		validators=[FileExtensionValidator(["pdf"])],
+	)
 
 	class Meta:
 		ordering = ("name",)

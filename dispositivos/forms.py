@@ -3,6 +3,9 @@ from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 from .models import Device, Measurement, MaintenanceRequest, Zone, Category, Organization
 
+MAX_IMAGE_SIZE = 2 * 1024 * 1024
+MAX_MANUAL_SIZE = 5 * 1024 * 1024
+
 
 class DeviceForm(forms.ModelForm):
     """
@@ -21,6 +24,8 @@ class DeviceForm(forms.ModelForm):
             "zone",
             "status",
             "consumption_kwh",
+            "image",
+            "manual",
         ]
         labels = {
             "name": "Nombre del Dispositivo",
@@ -30,6 +35,8 @@ class DeviceForm(forms.ModelForm):
             "zone": "Zona",
             "status": "Estado",
             "consumption_kwh": "Consumo (kWh)",
+            "image": "Imagen del dispositivo",
+            "manual": "Manual PDF",
         }
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ej: Medidor Sala Servidores"}),
@@ -39,6 +46,8 @@ class DeviceForm(forms.ModelForm):
             "zone": forms.Select(attrs={"class": "form-select"}),
             "status": forms.Select(attrs={"class": "form-select"}),
             "consumption_kwh": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "0.00"}),
+            "image": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),
+            "manual": forms.ClearableFileInput(attrs={"class": "form-control", "accept": ".pdf,application/pdf"}),
         }
 
     def __init__(self, *args, user=None, organization=None, **kwargs):
@@ -59,6 +68,18 @@ class DeviceForm(forms.ModelForm):
             self.fields["zone"].queryset = Zone.objects.filter(deleted_at__isnull=True)
 
         self.fields["category"].queryset = Category.objects.filter(is_active=True, deleted_at__isnull=True)
+
+    def clean_image(self):
+        image = self.cleaned_data.get("image")
+        if image and image.size > MAX_IMAGE_SIZE:
+            raise ValidationError("La imagen no puede superar 2 MB.")
+        return image
+
+    def clean_manual(self):
+        manual = self.cleaned_data.get("manual")
+        if manual and manual.size > MAX_MANUAL_SIZE:
+            raise ValidationError("El documento no puede superar 5 MB.")
+        return manual
 
     def clean_name(self):
         """Validación de longitud mínima y unicidad case-insensitive por organización (Clase 8)."""

@@ -1,13 +1,16 @@
-from io import StringIO
+from io import BytesIO, StringIO
+from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.admin.sites import AdminSite
 from django.core.management import call_command
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from PIL import Image
 
 from core.admin_utils import get_user_organization
 from .admin import (
@@ -907,3 +910,147 @@ class Clase8ProtectedCrudModelFormAndSwalTest(TestCase):
         res_list = self.client.get(reverse("dispositivos:catalogo"))
         pks_in_list = [d.pk for d in res_list.context["dispositivos"]]
         self.assertNotIn(dev_pk, pks_in_list)
+
+
+class Clase9FilesAndClase10ListControlsTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_data", stdout=StringIO())
+        cls.User = get_user_model()
+        cls.admin_norte = cls.User.objects.get(username="admin_norte")
+        cls.org_norte = Organization.objects.get(trade_name="EcoEnergy Norte")
+        cls.org_sur = Organization.objects.get(trade_name="EcoEnergy Sur")
+        cls.zone_norte = Zone.objects.filter(organization=cls.org_norte).first()
+        cls.zone_sur = Zone.objects.filter(organization=cls.org_sur).first()
+        cls.category = Category.objects.filter(is_active=True).first()
+        cls.visible_device = Device.objects.create(
+            organization=cls.org_norte,
+            category=cls.category,
+            zone=cls.zone_norte,
+            name="Solar Clase10 Norte",
+            serial_number="CLASS10-NORTE-001",
+            status=Device.STATUS_ACTIVE,
+            consumption_kwh=18,
+        )
+        cls.hidden_device = Device.objects.create(
+            organization=cls.org_sur,
+            category=cls.category,
+            zone=cls.zone_sur,
+            name="Solar Clase10 Sur",
+            serial_number="CLASS10-SUR-001",
+            status=Device.STATUS_ACTIVE,
+            consumption_kwh=21,
+        )
+
+    def setUp(self):
+        self.client.login(username="admin_norte", password="Password123!")
+
+    def test_create_accepts_and_stores_image_and_pdf(self):
+        image_bytes = BytesIO()
+        Image.new("RGB", (2, 2), color="green").save(image_bytes, format="PNG")
+        payload = {
+            "name": "Dispositivo con archivos",
+            "serial_number": "CLASS9-UPLOAD-001",
+            "category": self.category.pk,
+            "zone": self.zone_norte.pk,
+            "status": Device.STATUS_ACTIVE,
+            "consumption_kwh": "10.00",
+            "image": SimpleUploadedFile("device.png", image_bytes.getvalue(), content_type="image/png"),
+            "manual": SimpleUploadedFile("manual.pdf", b"%PDF-1.4 ejemplo", content_type="application/pdf"),
+        }
+
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            response = self.client.post(reverse("dispositivos:device_create"), payload)
+
+            self.assertRedirects(response, reverse("dispositivos:catalogo"))
+            device = Device.objects.get(serial_number="CLASS9-UPLOAD-001")
+            self.assertTrue(device.image.name.startswith("devices/images/"))
+            self.assertTrue(device.manual.name.startswith("devices/manuals/"))
+            self.assertTrue(device.image.storage.exists(device.image.name))
+            self.assertTrue(device.manual.storage.exists(device.manual.name))
+
+    def test_manual_rejects_non_pdf_extension(self):
+        payload = {
+            "name": "Archivo inválido",
+            "serial_number": "CLASS9-BAD-001",
+            "category": self.category.pk,
+            "zone": self.zone_norte.pk,
+            "status": Device.STATUS_ACTIVE,
+            "consumption_kwh": "10.00",
+            "manual": SimpleUploadedFile("manual.txt", b"not a pdf"),
+        }
+
+        response = self.client.post(reverse("dispositivos:device_create"), payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"]["manual"].errors)
+
+    def test_manual_over_size_limit_is_rejected(self):
+        payload = {
+            "name": "PDF demasiado grande",
+            "serial_number": "CLASS9-LARGE-001",
+            "category": self.category.pk,
+            "zone": self.zone_norte.pk,
+            "status": Device.STATUS_ACTIVE,
+            "consumption_kwh": "10.00",
+            "manual": SimpleUploadedFile("large.pdf", b"x" * (5 * 1024 * 1024 + 1)),
+        }
+
+        response = self.client.post(reverse("dispositivos:device_create"), payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response.context["form"], "manual", "El documento no puede superar 5 MB.")
+
+    def test_search_filters_and_scoping_are_combined(self):
+        response = self.client.get(reverse("dispositivos:catalogo"), {
+            "q": "Solar Clase10",
+            "status": Device.STATUS_ACTIVE,
+            "zone": self.zone_norte.pk,
+            "category": self.category.pk,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(response.context["dispositivos"]), [self.visible_device])
+        self.assertNotContains(response, self.hidden_device.name)
+
+    def test_invalid_order_falls_back_to_name(self):
+        response = self.client.get(reverse("dispositivos:catalogo"), {"order": "name__contains"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_order"], "name")
+
+    def test_page_size_is_limited_and_query_survives_navigation(self):
+        for index in range(6):
+            Device.objects.create(
+                organization=self.org_norte,
+                category=self.category,
+                zone=self.zone_norte,
+                name=f"Clase10Page Sensor {index}",
+                serial_number=f"CLASS10-PAGE-{index:03d}",
+                status=Device.STATUS_ACTIVE,
+                consumption_kwh=index,
+            )
+
+        response = self.client.get(reverse("dispositivos:catalogo"), {"q": "Clase10Page", "page_size": "5"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["page_size"], 5)
+        self.assertTrue(response.context["is_paginated"])
+        self.assertEqual(self.client.session["device_page_size"], 5)
+        self.assertIn("q=Clase10Page", response.context["query_params"])
+        self.assertIn("page_size=5", response.context["query_params"])
+
+        second_page = self.client.get(
+            reverse("dispositivos:catalogo"),
+            {"q": "Clase10Page", "page_size": "5", "page": "2"},
+        )
+        self.assertEqual(second_page.status_code, 200)
+        self.assertEqual(second_page.context["page_obj"].number, 2)
+        self.assertEqual(len(second_page.context["dispositivos"]), 1)
+
+    def test_unapproved_page_size_does_not_replace_session_preference(self):
+        self.client.get(reverse("dispositivos:catalogo"), {"page_size": "30"})
+        response = self.client.get(reverse("dispositivos:catalogo"), {"page_size": "5000"})
+
+        self.assertEqual(response.context["page_size"], 30)
+        self.assertEqual(self.client.session["device_page_size"], 30)

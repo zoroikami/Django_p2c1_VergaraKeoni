@@ -9,6 +9,7 @@ from django.contrib.auth.views import redirect_to_login
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import PermissionDenied
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -21,8 +22,19 @@ from .forms import (
     PasswordResetVerifyForm,
     PasswordResetConfirmForm,
 )
-from .models import Device, PasswordResetCode
+from .models import Category, Device, PasswordResetCode, Zone
 from .services import listar_zonas_con_resumen, obtener_zona_detalle
+
+ORDERING_MAP = {
+    "name": "name",
+    "-name": "-name",
+    "created": "created_at",
+    "-created": "-created_at",
+    "consumption": "consumption_kwh",
+    "-consumption": "-consumption_kwh",
+}
+ALLOWED_PAGE_SIZES = {5, 15, 30}
+PAGE_SIZE_SESSION_KEY = "device_page_size"
 
 
 def _get_user_organization(user):
@@ -297,14 +309,69 @@ class DeviceListView(ScopedPermissionMixin, LoginRequiredMixin, PermissionRequir
                 return Device.objects.none()
             qs = Device.objects.filter(organization=org, deleted_at__isnull=True)
 
-        return qs.select_related("organization", "zone", "category").order_by("name")
+        query = self.request.GET.get("q", "").strip()
+        if query:
+            qs = qs.filter(
+                Q(name__icontains=query)
+                | Q(serial_number__icontains=query)
+                | Q(zone__name__icontains=query)
+                | Q(category__name__icontains=query)
+            )
+
+        status = self.request.GET.get("status", "").strip()
+        if status in dict(Device.STATUS_CHOICES):
+            qs = qs.filter(status=status)
+
+        zone = self.request.GET.get("zone", "").strip()
+        if zone.isdigit():
+            qs = qs.filter(zone_id=int(zone))
+
+        category = self.request.GET.get("category", "").strip()
+        if category.isdigit():
+            qs = qs.filter(category_id=int(category))
+
+        raw_order = self.request.GET.get("order", "name")
+        ordering = ORDERING_MAP.get(raw_order, "name")
+        return qs.select_related("organization", "zone", "category").order_by(ordering, "pk")
+
+    def get_paginate_by(self, queryset):
+        raw_size = self.request.GET.get("page_size")
+        if raw_size:
+            try:
+                selected_size = int(raw_size)
+            except ValueError:
+                selected_size = None
+            if selected_size in ALLOWED_PAGE_SIZES:
+                self.request.session[PAGE_SIZE_SESSION_KEY] = selected_size
+
+        page_size = self.request.session.get(PAGE_SIZE_SESSION_KEY, 15)
+        if page_size not in ALLOWED_PAGE_SIZES:
+            page_size = 15
+            self.request.session[PAGE_SIZE_SESSION_KEY] = page_size
+        return page_size
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        dispositivos = list(context["dispositivos"])
-        activos = sum(1 for d in dispositivos if d.status == Device.STATUS_ACTIVE)
-        context["total"] = len(dispositivos)
-        context["total_activos"] = activos
+        context["total"] = self.object_list.count()
+        context["total_activos"] = self.object_list.filter(status=Device.STATUS_ACTIVE).count()
+        context["query_params"] = self.request.GET.copy()
+        context["query_params"].pop("page", None)
+        context["query_params"] = context["query_params"].urlencode()
+        context["page_size"] = self.request.session.get(PAGE_SIZE_SESSION_KEY, 15)
+        context["page_sizes"] = sorted(ALLOWED_PAGE_SIZES)
+        context["status_choices"] = Device.STATUS_CHOICES
+        raw_order = self.request.GET.get("order", "name")
+        context["selected_order"] = raw_order if raw_order in ORDERING_MAP else "name"
+
+        zones = Zone.objects.filter(deleted_at__isnull=True).select_related("organization")
+        if not self.request.user.is_superuser:
+            organization = _get_user_organization(self.request.user)
+            zones = zones.filter(organization=organization) if organization else zones.none()
+        context["zones"] = zones.order_by("name")
+        context["categories"] = Category.objects.filter(
+            is_active=True,
+            deleted_at__isnull=True,
+        ).order_by("name")
 
         # Contador de visitas de sesión a la vista de dispositivos (Clase 6)
         visits = self.request.session.get("catalog_visits", 0) + 1
@@ -345,8 +412,9 @@ class DeviceCreateView(ScopedPermissionMixin, LoginRequiredMixin, PermissionRequ
     def form_invalid(self, form):
         """En caso de error de validación, re-renderiza el catálogo con el modal abierto y los errores."""
         list_view = DeviceListView()
-        list_view.request = self.request
-        context = list_view.get_context_data(object_list=list_view.get_queryset())
+        list_view.setup(self.request)
+        list_view.object_list = list_view.get_queryset()
+        context = list_view.get_context_data(object_list=list_view.object_list)
         context["form"] = form
         context["open_modal"] = True
         return render(self.request, self.template_name, context)
@@ -354,8 +422,9 @@ class DeviceCreateView(ScopedPermissionMixin, LoginRequiredMixin, PermissionRequ
     def get_context_data(self, **kwargs):
         """Si se accede vía GET /dispositivos/new/, renderiza el catálogo con el modal abierto."""
         list_view = DeviceListView()
-        list_view.request = self.request
-        context = list_view.get_context_data(object_list=list_view.get_queryset())
+        list_view.setup(self.request)
+        list_view.object_list = list_view.get_queryset()
+        context = list_view.get_context_data(object_list=list_view.object_list)
         context["form"] = self.get_form()
         context["open_modal"] = True
         return context

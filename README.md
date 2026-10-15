@@ -121,9 +121,9 @@ Django_p2c1_VergaraKeoni/
 
 ---
 
-## 📌 Estado Actual del Proyecto (Unidad 2 Completa - Clases 1 a 8)
+## 📌 Estado Actual del Proyecto (Unidad 2 Completa - Clases 1 a 10)
 
-El proyecto cuenta con la implementación completa de las **8 clases de la Unidad 2**:
+El proyecto cuenta con la implementación completa de las **10 clases de la Unidad 2**:
 - **Clase 1 (Modelo de Datos y Arquitectura):** Modelos de negocio con `BaseModel` abstracto (`created_at`, `updated_at`, `deleted_at`) y diseño modular.
 - **Clase 2 (Modelos y Migraciones):** Soporte multi-motor (SQLite/MySQL) vía `.env`, constraints de unicidad, índices y migraciones aplicadas.
 - **Clase 3 (Django Admin Básico):** Administración con `list_display`, `search_fields` cruzando relaciones, `list_filter`, `list_select_related`, `date_hierarchy` y representaciones `__str__` legibles.
@@ -146,6 +146,19 @@ El proyecto cuenta con la implementación completa de las **8 clases de la Unida
   - Modal Bootstrap 5 reutilizable para Crear y Editar (`_device_form_modal.html`) con persistencia de errores y reapertura automática (`open_modal=True`).
   - Confirmación interactiva de borrado mediante SweetAlert2 disparando formulario POST con CSRF.
   - Borrado lógico auditado marcando `deleted_at` sin pérdida física de registros.
+- **Clase 9 (Archivos e Imágenes en Django):**
+  - Campos opcionales `ImageField` y `FileField` en `Device`, con almacenamiento organizado por fecha.
+  - Configuración `MEDIA_ROOT` / `MEDIA_URL`, servicio local solo con `DEBUG=True` y carpeta `media/` excluida de Git.
+  - Carga multipart en el modal, validación de imagen, extensión PDF y límites de 2 MB para imágenes y 5 MB para manuales.
+  - Presentación segura de imagen/manual cuando existen; Pillow declarado en `requirements.txt`.
+- **Clase 10 (Búsqueda, Filtros, Orden y Paginación):**
+  - Búsqueda `icontains` en nombre, serie, zona y categoría; filtros exactos por estado, zona y categoría.
+  - Scoping organizacional aplicado antes de los parámetros GET, ordenamiento con whitelist y fallback seguro.
+  - Paginación de 5, 15 o 30 filas, preferencia guardada en sesión y parámetros conservados al navegar.
+
+### Material docente
+- [Unidad 2 · Clase 9: Archivos e imágenes en Django](docs/clase9_archivos_imagenes_media.md)
+- [Unidad 2 · Clase 10: Búsqueda, filtros, ordenamiento y paginación](docs/clase10_busqueda_filtros_paginacion.md)
 
 ---
 

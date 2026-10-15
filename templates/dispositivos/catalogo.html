@@ -84,6 +84,69 @@
         </div>
     </div>
 
+    <form method="get" class="card panel-card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-lg-3">
+                    <label for="device-search" class="form-label small fw-semibold">Buscar</label>
+                    <input id="device-search" type="search" name="q" value="{{ request.GET.q|default:'' }}" class="form-control" placeholder="Nombre, serie, zona o categoría">
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label for="device-status" class="form-label small fw-semibold">Estado</label>
+                    <select id="device-status" name="status" class="form-select">
+                        <option value="">Todos</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label for="device-zone" class="form-label small fw-semibold">Zona</label>
+                    <select id="device-zone" name="zone" class="form-select">
+                        <option value="">Todas</option>
+                        {% for zone in zones %}
+                            <option value="{{ zone.pk }}" {% if request.GET.zone == zone.pk|stringformat:'s' %}selected{% endif %}>
+                                {{ zone.name }}{% if request.user.is_superuser %} · {{ zone.organization }}{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label for="device-category" class="form-label small fw-semibold">Categoría</label>
+                    <select id="device-category" name="category" class="form-select">
+                        <option value="">Todas</option>
+                        {% for category in categories %}
+                            <option value="{{ category.pk }}" {% if request.GET.category == category.pk|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <label for="device-order" class="form-label small fw-semibold">Ordenar</label>
+                    <select id="device-order" name="order" class="form-select">
+                        <option value="name" {% if selected_order == 'name' %}selected{% endif %}>Nombre A-Z</option>
+                        <option value="-name" {% if selected_order == '-name' %}selected{% endif %}>Nombre Z-A</option>
+                        <option value="created" {% if selected_order == 'created' %}selected{% endif %}>Más antiguos</option>
+                        <option value="-created" {% if selected_order == '-created' %}selected{% endif %}>Más recientes</option>
+                        <option value="consumption" {% if selected_order == 'consumption' %}selected{% endif %}>Menor consumo</option>
+                        <option value="-consumption" {% if selected_order == '-consumption' %}selected{% endif %}>Mayor consumo</option>
+                    </select>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label for="device-page-size" class="form-label small fw-semibold">Filas por página</label>
+                    <select id="device-page-size" name="page_size" class="form-select">
+                        {% for size in page_sizes %}
+                            <option value="{{ size }}" {% if page_size == size %}selected{% endif %}>{{ size }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-lg d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Aplicar</button>
+                    <a href="{% url 'dispositivos:catalogo' %}" class="btn btn-outline-secondary">Limpiar</a>
+                </div>
+            </div>
+        </div>
+    </form>
+
     <!-- Tabla de Dispositivos -->
     <div class="card panel-card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
         <div class="card-body p-0">
@@ -92,17 +155,26 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead class="bg-light border-bottom">
                             <tr>
+                                <th scope="col" class="px-3 py-3 fw-semibold text-secondary small text-uppercase">Imagen</th>
                                 <th scope="col" class="px-3 py-3 fw-semibold text-secondary small text-uppercase">Dispositivo</th>
                                 <th scope="col" class="py-3 fw-semibold text-secondary small text-uppercase">Categoría</th>
                                 <th scope="col" class="py-3 fw-semibold text-secondary small text-uppercase">Zona</th>
                                 <th scope="col" class="py-3 fw-semibold text-secondary small text-uppercase">Consumo</th>
                                 <th scope="col" class="py-3 fw-semibold text-secondary small text-uppercase">Estado</th>
+                                <th scope="col" class="py-3 fw-semibold text-secondary small text-uppercase">Manual</th>
                                 <th scope="col" class="text-end px-4 py-3 fw-semibold text-secondary small text-uppercase">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for d in dispositivos %}
                                 <tr>
+                                    <td class="px-3 py-3">
+                                        {% if d.image %}
+                                            <img src="{{ d.image.url }}" alt="Imagen de {{ d.name }}" width="48" height="48" class="rounded-2 object-fit-cover">
+                                        {% else %}
+                                            <span class="text-muted small">Sin imagen</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="px-3 py-3">
                                         <div class="fw-bold text-dark">{{ d.name }}</div>
                                         <div class="text-muted small font-monospace">{{ d.serial_number|default:"Sin N° Serie" }}</div>
@@ -123,6 +195,13 @@
                                             <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2 fw-semibold">Mantenimiento</span>
                                         {% else %}
                                             <span class="badge rounded-pill bg-secondary-subtle text-secondary px-3 py-2 fw-semibold">Retirado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3">
+                                        {% if d.manual %}
+                                            <a href="{{ d.manual.url }}" target="_blank" rel="noopener">Ver PDF</a>
+                                        {% else %}
+                                            <span class="text-muted small">Sin manual</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-end px-4 py-3">
@@ -161,8 +240,9 @@
                             <path d="M4.98 4a.5.5 0 0 0-.39.188L1.54 8H6a.5.5 0 0 1 .5.5 1.5 1.5 0 1 0 3 0A.5.5 0 0 1 10 8h4.46l-3.05-3.812A.5.5 0 0 0 11.02 4zm9.954 5H10.45a2.5 2.5 0 0 1-4.9 0H1.066l.32 2.562a.5.5 0 0 0 .497.438h12.234a.5.5 0 0 0 .496-.438zM3.809 3.563A1.5 1.5 0 0 1 4.981 3h6.038a1.5 1.5 0 0 1 1.172.563l3.7 4.625a.5.5 0 0 1 .109.312v4.5a1.5 1.5 0 0 1-1.5 1.5H1.5A1.5 1.5 0 0 1 0 14.5v-4.5q0-.16.109-.312z"/>
                         </svg>
                     </div>
-                    <h2 class="h5 fw-bold mb-2">No hay dispositivos registrados</h2>
-                    <p class="text-muted mb-3">Tu organización aún no cuenta con dispositivos activos en este listado.</p>
+                    <h2 class="h5 fw-bold mb-2">No se encontraron dispositivos</h2>
+                    <p class="text-muted mb-3">Prueba otros términos o limpia los filtros para ver el catálogo completo.</p>
+                    <a href="{% url 'dispositivos:catalogo' %}" class="btn btn-sm btn-outline-secondary rounded-3 px-3 py-2">Limpiar búsqueda</a>
                     {% if perms.dispositivos.add_device %}
                         <a href="{% url 'dispositivos:device_create' %}" class="btn btn-sm btn-success rounded-3 px-3 py-2 fw-semibold">
                             Registrar Primer Dispositivo
@@ -172,6 +252,20 @@
             {% endif %}
         </div>
     </div>
+
+    {% if is_paginated %}
+        <nav class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4" aria-label="Paginación del catálogo">
+            <span class="text-muted small">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} · {{ total }} dispositivos</span>
+            <div class="d-flex gap-2">
+                {% if page_obj.has_previous %}
+                    <a class="btn btn-outline-secondary btn-sm" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Página anterior">Anterior</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a class="btn btn-outline-secondary btn-sm" href="?{% if query_params %}{{ query_params }}&amp;{% endif %}page={{ page_obj.next_page_number }}" aria-label="Página siguiente">Siguiente</a>
+                {% endif %}
+            </div>
+        </nav>
+    {% endif %}
 </div>
 
 <!-- Modal Reutilizable para Create y Update (Clase 8) -->

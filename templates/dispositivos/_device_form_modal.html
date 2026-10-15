@@ -1,7 +1,7 @@
 <div class="modal fade" id="deviceModal" tabindex="-1" aria-labelledby="deviceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content rounded-4 border-0 shadow">
-            <form method="post" novalidate>
+            <form method="post" enctype="multipart/form-data" novalidate>
                 {% csrf_token %}
                 <div class="modal-header border-bottom px-4 py-3 bg-light rounded-top-4">
                     <h5 class="modal-title fw-bold" id="deviceModalLabel">
@@ -80,6 +80,28 @@
                             </label>
                             {{ form.consumption_kwh }}
                             {% for error in form.consumption_kwh.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.image.id_for_label }}" class="form-label fw-semibold small text-secondary">
+                                {{ form.image.label }}
+                            </label>
+                            {{ form.image }}
+                            <div class="form-text">Imagen válida, máximo 2 MB.</div>
+                            {% for error in form.image.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.manual.id_for_label }}" class="form-label fw-semibold small text-secondary">
+                                {{ form.manual.label }}
+                            </label>
+                            {{ form.manual }}
+                            <div class="form-text">Solo PDF, máximo 5 MB.</div>
+                            {% for error in form.manual.errors %}
                                 <div class="text-danger small mt-1">{{ error }}</div>
                             {% endfor %}
                         </div>
